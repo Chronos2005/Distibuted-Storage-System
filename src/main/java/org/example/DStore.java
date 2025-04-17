@@ -1,7 +1,10 @@
 package org.example;
 
+import org.example.Networking.TCPReceiver;
+import org.example.Networking.TCPSender;
+
 import java.io.IOException;
-import java.net.ServerSocket;
+import java.net.Socket;
 
 public class DStore {
 
@@ -19,12 +22,12 @@ public class DStore {
      * @param timeout the time to wait when waiting for a response
      * @param fileFolder A Path to the folder a where the files will be stored
      */
-    public DStore(int port, int controllerPort, int timeout, String fileFolder) {
+    public DStore(int port, int controllerPort, int timeout, String fileFolder) throws IOException {
         this.port = port;
         this.controllerPort = controllerPort;
         this.timeout = timeout;
         this.fileFolder = fileFolder;
-        this.receiver = new TCPReceiver(port);  // Listening on DStore's port
+        this.receiver = new TCPReceiver(port,this::handleMessage);  // Listening on DStore's port
         this.sender = new TCPSender("localhost", controllerPort);  // Communicating with Controller
     }
 
@@ -51,19 +54,23 @@ public class DStore {
             dstore.Join();
 
 
-        } catch (NumberFormatException e) {
-            System.out.println("Error: port, controllerPort, and timeout must be integers.");
+        } catch (NumberFormatException | IOException e) {
+            System.out.println(e);
         }
     }
 
     /**
      * The JOIN operation so the DStore can join the storage system.
      */
-    public void Join() {
-        System.out.println("DStore listening on port " + port);
-        receiver.start();
-        sender.sendMessage("JOIN " + port);
+    public void Join() throws IOException {
+        sender.sendOneWay("JOIN " + port);
     }
+
+    public void handleMessage(String message , Socket socket) throws IOException {
+    }
+
+
+
 
 
 

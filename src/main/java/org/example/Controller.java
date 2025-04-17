@@ -6,6 +6,8 @@ import org.example.Networking.TCPSender;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Controller {
 
@@ -15,6 +17,7 @@ public class Controller {
     private int rebalancePeriod;
     private TCPSender sender;
     private TCPReceiver receiver;
+    private Map<Integer, Socket> dstoreSockets;
 
 
     /**
@@ -29,7 +32,8 @@ public class Controller {
         this.replicationFactor = R;
         this.timeout = timeout;
         this.rebalancePeriod = rebalancePeriod;
-        this.receiver = new TCPReceiver(cport);
+        this.receiver = new TCPReceiver(cport, this::handleMessage);
+        dstoreSockets = new ConcurrentHashMap<>();
     }
 
 
@@ -50,7 +54,7 @@ public class Controller {
     }
 
     /**
-     * Starts the the reciever and does any necessary initialisation so the controller works properly
+     * Starts  the reciever and does any necessary initialisation so the controller works properly
      * @throws IOException
      */
     public void start() throws IOException {
@@ -65,18 +69,20 @@ public class Controller {
      * @throws IOException
      */
     public void handleMessage(String message , Socket socket) throws IOException {
-        switch (message) {
+        String[] parts = message.split(" ");
+        String command = parts[0];
+        switch (command) {
             case "STORE": handleStore(); break;
             case "LOAD": handleLoad(); break;
             case "REMOVE": handleRemove(); break;
             case "LIST": handleList(); break;
             case "RELOAD": handleReload(); break;
-            case "JOIN": handleJoin(); break;
+            case "JOIN": handleJoin(message , socket); break;
             case "STORE_ACK": handleStoreAck(); break;
             case "REMOVE_ACK": handleRemoveAck(); break;
             case "ERROR_FILE_DOES_NOT_EXIST": handleRemoveAck(); break; // same effect
             case "REBALANCE_COMPLETE": handleRebalanceComplete(); break;
-            default: System.err.println("Unknown command: " + message);
+            default: System.err.println("Unknown command: " + command);
         }
     }
 
@@ -109,7 +115,11 @@ public class Controller {
 
     }
 
-    private void handleJoin() {
+    private void handleJoin(String message,Socket socket) {
+        String[] parts = message.split(" ");
+        int port = Integer.parseInt(parts[1]);
+        dstoreSockets.put(port,socket);
+        System.out.println("Added Socket to system: " + port);
 
     }
 
