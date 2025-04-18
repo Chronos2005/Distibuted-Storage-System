@@ -24,6 +24,13 @@ public class TCPSender {
     public TCPSender(String host, int port) throws IOException {
         this.host = host;
         this.port = port;
+        socket = new Socket(host, port);
+        connect();
+    }
+    public TCPSender( Socket socket) throws IOException {
+        this.host= null;
+        this.port = -1;
+        this.socket = socket;
         connect();
     }
 
@@ -31,7 +38,7 @@ public class TCPSender {
      * Establishes a persistent TCP connection and configures streams.
      */
     private void connect() throws IOException {
-        socket = new Socket(host, port);
+
         // Set a read timeout to detect unresponsive server
         socket.setSoTimeout(5000);
         out = new PrintWriter(socket.getOutputStream(), true);
