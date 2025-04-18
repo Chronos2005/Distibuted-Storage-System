@@ -1,11 +1,16 @@
 package org.example;
 
+import org.example.Index.FileInfo;
+import org.example.Index.Index;
 import org.example.Networking.TCPReceiver;
 import org.example.Networking.TCPSender;
+import org.example.Protocol.Protocol;
 
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -17,7 +22,10 @@ public class Controller {
     private int rebalancePeriod;
     private TCPSender sender;
     private TCPReceiver receiver;
-    private Map<Integer, Socket> dstoreSockets;
+    private Map<Integer, TCPSender> dstoreSenders;
+    private Index index;
+    private Protocol protocol;
+    private ConcurrentHashMap<Integer, Integer>  dStoreFileCount;
 
 
     /**
@@ -33,7 +41,8 @@ public class Controller {
         this.timeout = timeout;
         this.rebalancePeriod = rebalancePeriod;
         this.receiver = new TCPReceiver(cport, this::handleMessage);
-        dstoreSockets = new ConcurrentHashMap<>();
+        dstoreSenders= new ConcurrentHashMap<>();
+        index = new Index();
     }
 
 
@@ -72,7 +81,7 @@ public class Controller {
         String[] parts = message.split(" ");
         String command = parts[0];
         switch (command) {
-            case "STORE": handleStore(); break;
+            case "STORE": handleStore(message,socket); break;
             case "LOAD": handleLoad(); break;
             case "REMOVE": handleRemove(); break;
             case "LIST": handleList(); break;
@@ -86,7 +95,26 @@ public class Controller {
         }
     }
 
-    private void handleStore() {
+    private void handleStore(String message , Socket socket) throws IOException {
+        String[] parts = message.split(" ");
+        String fileName = parts[1];
+        int port = Integer.parseInt(parts[2]);
+        ArrayList<Integer> dstorePorts = new ArrayList<>();
+        FileInfo fileInfo = new FileInfo(Index.FileState.STORE_IN_PROGRESS, port,dstorePorts);
+        index.addFileInfo(fileName, fileInfo);
+        List<Integer> portList = selectLeastLoadedDstores(replicationFactor);
+        StringBuilder messageBuilder = new StringBuilder(Protocol.STORE_TO_TOKEN);
+        for (int portNumbers : portList) {
+            messageBuilder.append(" ").append(portNumbers);
+        }
+
+        String clientResponse = messageBuilder.toString();
+        TCPSender clientSender = new TCPSender(socket);
+        clientSender.sendMessage(clientResponse);
+
+
+
+
 
     }
 
@@ -115,13 +143,30 @@ public class Controller {
 
     }
 
-    private void handleJoin(String message,Socket socket) {
+    private void handleJoin(String message,Socket socket) throws IOException {
         String[] parts = message.split(" ");
         int port = Integer.parseInt(parts[1]);
-        dstoreSockets.put(port,socket);
+        TCPSender sender = new TCPSender(socket);
+        dstoreSenders.put(port,sender);
         System.out.println("Added Socket to system: " + port);
 
+
     }
+
+    private List<Integer> selectLeastLoadedDstores(int R) {
+        Map<Integer,Integer> counts = index.getFileCountPerDstore();
+
+        List<Integer> ports = new ArrayList<>(dstoreSenders.keySet());
+        if (ports.size() < R) {
+            throw new IllegalStateException("Not enough Dstores: have "
+                    + ports.size() + ", need " + R);
+        }
+
+        ports.sort(Comparator.comparingInt(p -> counts.getOrDefault(p, 0)));
+
+        return ports.subList(0, R);
+    }
+
 
 
 
