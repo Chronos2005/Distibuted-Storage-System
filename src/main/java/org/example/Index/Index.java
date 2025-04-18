@@ -1,6 +1,7 @@
 package org.example.Index;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 
@@ -39,4 +40,22 @@ public class Index {
     }
 
 
+    /**
+     * Returns a map of Dstore port → number of files
+     * that are in STORE_COMPLETE state on that Dstore.
+     */
+    public Map<Integer,Integer> getFileCountPerDstore() {
+        Map<Integer,Integer> counts = new HashMap<>();
+        for (FileInfo info : files.values()) {
+            if (info.getFileState() == FileState.STORE_COMPLETE) {
+                for (int port : info.getdStorePorts()) {
+                    counts.merge(port, 1, Integer::sum);
+                }
+            }
+        }
+        return counts;
+    }
 }
+
+
+
