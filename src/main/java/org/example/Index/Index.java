@@ -1,13 +1,14 @@
 package org.example.Index;
 
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class Index {
-    private HashMap<String, FileInfo> files;
+    private ConcurrentHashMap<String, FileInfo> files;
 
     public Index() {
-        files = new HashMap<>();
+        files = new ConcurrentHashMap<>();
     }
 
     public FileInfo getFileInfo(String filename) {
@@ -17,6 +18,12 @@ public class Index {
     public void setFileInfo(String filename, FileInfo fileInfo) {
         files.put(filename, fileInfo);
     }
+
+
+    public void addFileInfo(String filename, FileInfo fileInfo) {
+        files.put(filename, fileInfo);
+    }
+
 
 
 
