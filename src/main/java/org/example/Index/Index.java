@@ -2,6 +2,7 @@ package org.example.Index;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 
@@ -54,6 +55,10 @@ public class Index {
             }
         }
         return counts;
+    }
+
+    public Set<String> getAllFileNames() {
+        return files.keySet();
     }
 }
 
