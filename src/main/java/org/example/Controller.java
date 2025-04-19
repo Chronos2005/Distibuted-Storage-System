@@ -27,6 +27,10 @@ public class Controller {
     private Protocol protocol;
     private ConcurrentHashMap<Integer, Integer>  dStoreFileCount;
 
+    // Track pending client requests waiting for STORE_COMPLETE
+    private final Map<String, TCPSender> pendingClients = new ConcurrentHashMap<>();
+    private final Map<String, Integer> pendingAcks = new ConcurrentHashMap<>();
+
 
     /**
      * Creates a controller object
@@ -80,14 +84,15 @@ public class Controller {
     public void handleMessage(String message , Socket socket) throws IOException {
         String[] parts = message.split(" ");
         String command = parts[0];
+        System.out.println("Message received: " + message);
         switch (command) {
-            case "STORE": handleStore(message,socket); break;
+            case "STORE": handleStore(parts,socket); break;
             case "LOAD": handleLoad(); break;
             case "REMOVE": handleRemove(); break;
-            case "LIST": handleList(); break;
+            case "LIST": handleList(socket); break;
             case "RELOAD": handleReload(); break;
             case "JOIN": handleJoin(message , socket); break;
-            case "STORE_ACK": handleStoreAck(); break;
+            case "STORE_ACK": handleStoreAck(message); break;
             case "REMOVE_ACK": handleRemoveAck(); break;
             case "ERROR_FILE_DOES_NOT_EXIST": handleRemoveAck(); break; // same effect
             case "REBALANCE_COMPLETE": handleRebalanceComplete(); break;
@@ -95,27 +100,64 @@ public class Controller {
         }
     }
 
-    private void handleStore(String message , Socket socket) throws IOException {
-        String[] parts = message.split(" ");
-        String fileName = parts[1];
-        int port = Integer.parseInt(parts[2]);
-        ArrayList<Integer> dstorePorts = new ArrayList<>();
-        FileInfo fileInfo = new FileInfo(Index.FileState.STORE_IN_PROGRESS, port,dstorePorts);
-        index.addFileInfo(fileName, fileInfo);
-        List<Integer> portList = selectLeastLoadedDstores(replicationFactor);
-        StringBuilder messageBuilder = new StringBuilder(Protocol.STORE_TO_TOKEN);
-        for (int portNumbers : portList) {
-            messageBuilder.append(" ").append(portNumbers);
+    private void handleStore(String[] parts, Socket clientSocket) throws IOException {
+        String filename = parts[1];
+        int fileSize = Integer.parseInt(parts[2]);
+
+        // Select R least-loaded dstores
+        List<Integer> selected = selectLeastLoadedDstores(replicationFactor);
+
+        // Update index: store in-progress
+
+        FileInfo info = new FileInfo(Index.FileState.STORE_IN_PROGRESS, fileSize, new ArrayList<>(selected));
+        index.setFileInfo(filename, info);
+
+        // Send STORE_TO to client
+        TCPSender clientSender = new TCPSender(clientSocket);
+        StringBuilder resp = new StringBuilder(Protocol.STORE_TO_TOKEN);
+        for (int p : selected) resp.append(" ").append(p);
+        clientSender.sendOneWay(resp.toString());
+
+        // Track pending client and ack count
+        pendingClients.put(filename, clientSender);
+        pendingAcks.put(filename, 0);
+    }
+
+    private void handleStoreAck(String message) {
+        // 1) Parse the filename from the incoming message
+        //    message looks like "STORE_ACK filename"
+        String[] parts = message.split(" ", 2);
+        if (parts.length < 2) {
+            System.err.println("Malformed STORE_ACK: " + message);
+            return;
+        }
+        String filename = parts[1];
+
+        // 2) Look up the FileInfo; guard against it being null
+        FileInfo info = index.getFileInfo(filename);
+        if (info == null) {
+            System.err.println("STORE_ACK for unknown file: " + filename);
+            return;
         }
 
-        String clientResponse = messageBuilder.toString();
-        TCPSender clientSender = new TCPSender(socket);
-        clientSender.sendMessage(clientResponse);
+        // 3) Increment and check ack‐count
+        int count = pendingAcks.merge(filename, 1, Integer::sum);
+        if (count >= replicationFactor) {
+            // a) Mark store complete
+            info.setFileState(Index.FileState.STORE_COMPLETE);
 
-
-
-
-
+            // b) Reply to the waiting client
+            TCPSender clientSender = pendingClients.remove(filename);
+            pendingAcks.remove(filename);
+            if (clientSender != null) {
+                clientSender.sendOneWay(Protocol.STORE_COMPLETE_TOKEN);
+                System.out.println("Sent STORE_COMPLETE for " + filename);
+            } else {
+                System.err.println("No pending client for " + filename);
+            }
+        } else {
+            System.out.println("Received STORE_ACK " + filename + " (" + count + "/" + replicationFactor + ")");
+        }
     }
 
     private void handleLoad() {
@@ -125,16 +167,38 @@ public class Controller {
     private void handleRemove() {
 
     }
-    private void handleList(String... args) {
+    private void handleList(Socket socket) throws IOException {
+        // Wrap the client socket so we can use sendOneWay(...)
+        TCPSender clientSender = new TCPSender(socket);
+
+        // 1) Not enough Dstores?
+        if (dstoreSenders.size() < replicationFactor) {
+            clientSender.sendOneWay(Protocol.ERROR_NOT_ENOUGH_DSTORES_TOKEN);
+            return;
+        }
+
+        // 2) Build the LIST response
+        StringBuilder resp = new StringBuilder(Protocol.LIST_TOKEN);
+        // You need a helper in your Index to retrieve all filenames:
+        //   public Set<String> getAllFileNames() { return files.keySet(); }
+        for (String filename : index.getAllFileNames()) {
+            FileInfo info = index.getFileInfo(filename);
+            if (info.getFileState() == Index.FileState.STORE_COMPLETE) {
+                resp.append(" ").append(filename);
+            }
+        }
+
+        // 3) Send it back to the client
+        clientSender.sendOneWay(resp.toString());
+
+
 
     }
     private void handleReload() {
 
     }
 
-    private void handleStoreAck() {
 
-    }
 
     private void handleRemoveAck() {
 
