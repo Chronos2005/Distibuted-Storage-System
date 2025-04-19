@@ -39,8 +39,7 @@ public class TCPSender {
      */
     private void connect() throws IOException {
 
-        // Set a read timeout to detect unresponsive server
-        socket.setSoTimeout(5000);
+
         out = new PrintWriter(socket.getOutputStream(), true);
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
     }
