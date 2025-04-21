@@ -60,6 +60,12 @@ public class Index {
     public Set<String> getAllFileNames() {
         return files.keySet();
     }
+
+    // In Index.java
+    public void removeFileInfo(String filename) {
+        files.remove(filename);
+    }
+
 }
 
 

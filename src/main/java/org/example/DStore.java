@@ -80,6 +80,7 @@ public class DStore {
                 break;
 
             case Protocol.REMOVE_TOKEN:
+                handleRemove(parts, socket);
 
                 break;
 
@@ -122,6 +123,30 @@ public class DStore {
     private void handleLoad(String[] message , Socket socket) throws IOException {
         TCPSender clientSender = new TCPSender(socket);
         clientSender.sendFile(fileFolder,message[1]);
+    }
+
+    private void handleRemove(String[] message , Socket socket) throws IOException {
+        String filename = message[1];
+        File file = new File(fileFolder, filename);
+
+        if (file.exists()) {
+            // Attempt to delete
+            if (file.delete()) {
+                System.out.println("Removed file: " + filename);
+            } else {
+                System.err.println("Could not delete file: " + filename);
+                // Still ack as per spec: Dstore no longer stores it
+            }
+            // Notify Controller of successful remove
+            controllerSender.sendOneWay(Protocol.REMOVE_ACK_TOKEN + " " + filename);
+
+        } else {
+            // File wasn’t here—tell Controller it’s effectively gone
+            System.out.println("File not found for REMOVE: " + filename);
+            controllerSender.sendOneWay(Protocol.ERROR_FILE_DOES_NOT_EXIST_TOKEN + " " + filename);
+        }
+
+
     }
 
 

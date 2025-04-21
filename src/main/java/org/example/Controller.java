@@ -31,6 +31,17 @@ public class Controller {
     private final Map<String, TCPSender> pendingClients = new ConcurrentHashMap<>();
     private final Map<String, Integer> pendingAcks = new ConcurrentHashMap<>();
 
+    // Tracks which client is waiting for each remove
+    private final Map<String,TCPSender> pendingRemoveClients = new ConcurrentHashMap<>();
+    // Counts how many REMOVE_ACKs we’ve seen so far
+    private final Map<String,Integer>    pendingRemoveAcks    = new ConcurrentHashMap<>();
+
+    private Map<Socket, Integer> socketToDstorePort = new ConcurrentHashMap<>();
+
+
+
+
+
 
     /**
      * Creates a controller object
@@ -88,13 +99,13 @@ public class Controller {
         switch (command) {
             case "STORE": handleStore(parts,socket); break;
             case "LOAD": handleLoad(parts ,socket); break;
-            case "REMOVE": handleRemove(); break;
+            case "REMOVE": handleRemove(parts, socket); break;
             case "LIST": handleList(socket); break;
             case "RELOAD": handleReload(); break;
             case "JOIN": handleJoin(message , socket); break;
             case "STORE_ACK": handleStoreAck(message, socket); break;
-            case "REMOVE_ACK": handleRemoveAck(); break;
-            case "ERROR_FILE_DOES_NOT_EXIST": handleRemoveAck(); break; // same effect
+            case "REMOVE_ACK": handleRemoveAck(message); break;
+            case "ERROR_FILE_DOES_NOT_EXIST": handleRemoveAck(message); break; // same effect
             case "REBALANCE_COMPLETE": handleRebalanceComplete(); break;
             default: System.err.println("Unknown command: " + command);
         }
@@ -123,8 +134,7 @@ public class Controller {
         pendingAcks.put(filename, 0);
     }
 
-    private void handleStoreAck(String message , Socket dStoreSocket) throws IOException {
-        int port = dStoreSocket.getPort();
+    private void handleStoreAck(String message, Socket dStoreSocket) throws IOException {
         String[] parts = message.split(" ", 2);
         if (parts.length < 2) {
             System.err.println("Malformed STORE_ACK: " + message);
@@ -132,21 +142,30 @@ public class Controller {
         }
         String filename = parts[1];
 
-        // 2) Look up the FileInfo; guard against it being null
+        // Get the Dstore's port from our mapping
+        Integer dstorePort = socketToDstorePort.get(dStoreSocket);
+        if (dstorePort == null) {
+            System.err.println("Unknown Dstore socket for STORE_ACK: " + message);
+            return;
+        }
+
+        // Look up the FileInfo; guard against it being null
         FileInfo info = index.getFileInfo(filename);
-        info.addDStorePorts(port);
         if (info == null) {
             System.err.println("STORE_ACK for unknown file: " + filename);
             return;
         }
 
-        // 3) Increment and check ack‐count
+        // Add this Dstore to the file's locations
+        info.addDStorePorts(dstorePort);
+
+        // Increment and check ack-count
         int count = pendingAcks.merge(filename, 1, Integer::sum);
         if (count >= replicationFactor) {
-            // a) Mark store complete
+            // Mark store complete
             info.setFileState(Index.FileState.STORE_COMPLETE);
 
-            // b) Reply to the waiting client
+            // Reply to the waiting client
             TCPSender clientSender = pendingClients.remove(filename);
             pendingAcks.remove(filename);
             if (clientSender != null) {
@@ -170,9 +189,31 @@ public class Controller {
         tcpSender.sendOneWay(stringBuilder.toString());
     }
 
-    private void handleRemove() {
+    private void handleRemove(String[] parts, Socket clientSocket) throws IOException {
+        String filename = parts[1];
+        FileInfo info = index.getFileInfo(filename);
+        if (info == null || info.getFileState() != Index.FileState.STORE_COMPLETE) {
+            new TCPSender(clientSocket)
+                    .sendOneWay(Protocol.ERROR_FILE_DOES_NOT_EXIST_TOKEN);
 
+        }
+
+        // 1) Mark in-progress
+        info.setFileState(Index.FileState.REMOVE_IN_PROGRESS);
+
+        // 2) Track the client and reset ack count
+        TCPSender clientSender = new TCPSender(clientSocket);
+        pendingRemoveClients.put(filename, clientSender);
+        pendingRemoveAcks.put(filename, 0);
+        ArrayList<Integer> ports = info.getdStorePorts();
+
+        // 3) Send REMOVE to every Dstore that holds the file
+        for (int dstPort : ports) {
+            dstoreSenders.get(dstPort)
+                    .sendOneWay(Protocol.REMOVE_TOKEN + " " + filename);
+        }
     }
+
     private void handleList(Socket socket) throws IOException {
         // Wrap the client socket so we can use sendOneWay(...)
         TCPSender clientSender = new TCPSender(socket);
@@ -206,23 +247,62 @@ public class Controller {
 
 
 
-    private void handleRemoveAck() {
+    private void handleRemoveAck(String message) {
+        // 1) Parse
+        String[] parts = message.split(" ", 2);
+        if (parts.length < 2) {
+            System.err.println("Malformed REMOVE_ACK: " + message);
+            return;
+        }
+        String filename = parts[1];
 
+        // 2) Ensure we’re removing
+        FileInfo info = index.getFileInfo(filename);
+        if (info == null || info.getFileState() != Index.FileState.REMOVE_IN_PROGRESS) {
+            System.err.println("Unexpected REMOVE_ACK for: " + filename);
+            return;
+        }
+
+        // 3) Increment ACK count
+        int count = pendingRemoveAcks.merge(filename, 1, Integer::sum);
+        int expected = info.getdStorePorts().size();
+        System.out.println("Received REMOVE_ACK for "
+                + filename + " (" + count + "/" + expected + ")");
+
+        // 4) If we’ve heard from all Dstores, finish up
+        if (count >= expected) {
+            // a) Remove from index
+            index.removeFileInfo(filename);
+
+            // b) Reply to client
+            TCPSender clientSender = pendingRemoveClients.remove(filename);
+            pendingRemoveAcks.remove(filename);
+            if (clientSender != null) {
+                clientSender.sendOneWay(Protocol.REMOVE_COMPLETE_TOKEN);
+                System.out.println("Sent REMOVE_COMPLETE for " + filename);
+            } else {
+                System.err.println("No pending client for REMOVE " + filename);
+            }
+        }
     }
+
     private void handleRebalanceComplete() {
 
     }
 
-    private void handleJoin(String message,Socket socket) throws IOException {
+    private void handleJoin(String message, Socket socket) throws IOException {
         String[] parts = message.split(" ");
         int port = Integer.parseInt(parts[1]);
-        TCPSender sender = new TCPSender(socket);
-        dstoreSenders.put(port,sender);
-        System.out.println("Added Socket to system: " + port);
 
+        // Create a NEW connection to the Dstore's listening port
+        TCPSender sender = new TCPSender("localhost", port);
+        dstoreSenders.put(port, sender);
 
+        // Still track the incoming socket for receiving messages
+        socketToDstorePort.put(socket, port);
+
+        System.out.println("Added Dstore to system: " + port);
     }
-
     private List<Integer> selectLeastLoadedDstores(int R) {
         Map<Integer,Integer> counts = index.getFileCountPerDstore();
 
