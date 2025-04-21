@@ -1,6 +1,6 @@
 package org.example.Networking;
 
-import org.example.Intefaces.MessageHandler;
+import org.example.handlers.MessageHandler;
 
 import java.io.*;
 import java.net.ServerSocket;
