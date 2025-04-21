@@ -1,15 +1,16 @@
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
+
+
 
 public class ClientMain {
 
 	public static void main(String[] args) {
 		if (args.length < 3) {
 			System.err.println("Usage: java ClientMain <cport> <timeout> <operation>");
-			System.err.println("  operation: store | list");
+			System.err.println("  operation: store | list | load");
 			return;
 		}
 
@@ -28,6 +29,9 @@ public class ClientMain {
 				case "list":
 					testList(client);
 					break;
+				case "load":
+					testLoad(client);
+					break;
 				default:
 					System.err.println("Unknown operation: " + op);
 			}
@@ -37,12 +41,13 @@ public class ClientMain {
 			System.err.println("I/O error: " + e.getMessage());
 			e.printStackTrace();
 		}
-    }
+	}
 
 	/**
 	 * Test storing the first file in 'to_store' directory.
 	 */
-	private static void testStore(Client client) throws IOException, NotEnoughDstoresException, FileAlreadyExistsException {
+	private static void testStore(Client client)
+			throws IOException, NotEnoughDstoresException, FileAlreadyExistsException {
 		File uploadFolder = new File("to_store");
 		File[] files = uploadFolder.listFiles();
 		if (files == null || files.length == 0) {
@@ -65,4 +70,41 @@ public class ClientMain {
 		String[] list = client.list();
 		System.out.println("Files stored (" + list.length + "): " + Arrays.toString(list));
 	}
+
+	/**
+	 * Test storing a file, then loading it back into 'downloads' directory.
+	 */
+	private static void testLoad(Client client) {
+		File uploadFolder = new File("to_store");
+		File downloadFolder = new File("downloads");
+		downloadFolder.mkdirs();
+
+		File[] files = uploadFolder.listFiles();
+		if (files == null || files.length == 0) {
+			System.err.println("No files in 'to_store' to store and load.");
+			return;
+		}
+
+		File fileToStore = files[0];
+		String filename = fileToStore.getName();
+		try {
+			// Store
+			byte[] data = Files.readAllBytes(fileToStore.toPath());
+			System.out.println("Storing file for load test: " + filename);
+			client.store(filename, data);
+
+			// Load
+			System.out.println("Loading file: " + filename);
+			client.load(filename, downloadFolder);
+			File loaded = new File(downloadFolder, filename);
+			if (loaded.exists()) {
+				System.out.println("Load completed. File saved to: " + loaded.getAbsolutePath());
+			} else {
+				System.err.println("Load failed: file not found in downloads folder.");
+			}
+
+		} catch (IOException e) {
+			System.err.println("I/O error during load test: " + e.getMessage());
+		}
+    }
 }

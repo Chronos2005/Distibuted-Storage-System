@@ -103,52 +103,40 @@ public class TCPSender {
         sendMessage(message, false);
     }
 
-    /**
-     * Sends a file over the persistent connection.
-     * Format: send a header line "FILE filename filesize" then raw bytes using write().
-     * @param filePath Path to the file to send
-     * @return true if sent successfully, false on failure or disconnection
-     */
-    public boolean sendFile(String filePath) {
-        File file = new File(filePath);
-        if (!file.exists() || !file.isFile()) {
-            System.err.println("File not found: " + filePath);
-            return false;
-        }
-
-        try (FileInputStream fis = new FileInputStream(file);
-             OutputStream dataOut = socket.getOutputStream()) {
-
-            long fileSize = file.length();
-            // Send header
-            out.println("FILE " + file.getName() + " " + fileSize);
-            System.out.println("Sent header for file: " + file.getName());
-
-            // Send file content using write()
-            byte[] buffer = new byte[4096];
-            int read;
-            while ((read = fis.read(buffer)) != -1) {
-                dataOut.write(buffer, 0, read);
-            }
-            dataOut.flush();
-            System.out.println("File transfer complete: " + file.getName());
-
-            // Wait for ACK
-            String ack = in.readLine();
-            if (ack == null) {
-                throw new IOException("Server closed connection after file transfer");
-            }
-            System.out.println("Received ACK: " + ack);
-            return true;
-
-        } catch (SocketTimeoutException e) {
-            System.err.println("File send timed out: server unresponsive");
-        } catch (IOException e) {
-            System.err.println("Connection lost during file send: " + e.getMessage());
-            close();
-        }
-        return false;
+  /**
+   * Streams the raw bytes of the given file over the socket's OutputStream,
+   * without sending any header or waiting for an ACK.
+   *
+   * @param folderPath  full path on disk to the file to send
+   * @return          true if the bytes were sent successfully, false on I/O error
+   */
+  public boolean sendFile(String folderPath, String filename) {
+    File file = new File(folderPath, filename);
+    if (!file.exists() || !file.isFile()) {
+      System.err.println("File not found: " + file.getAbsolutePath());
+      return false;
     }
+
+    try (FileInputStream fis = new FileInputStream(file);
+        OutputStream out = socket.getOutputStream()) {
+
+      byte[] buffer = new byte[4096];
+      int bytesRead;
+      while ((bytesRead = fis.read(buffer)) != -1) {
+        out.write(buffer, 0, bytesRead);
+      }
+      out.flush();
+      System.out.println("Sent raw file content: " + filename);
+      return true;
+
+    } catch (IOException e) {
+      System.err.println("Error sending file '" + filename + "': " + e.getMessage());
+      close();
+      return false;
+    }
+  }
+
+
 
 
 

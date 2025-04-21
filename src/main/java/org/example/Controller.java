@@ -87,12 +87,12 @@ public class Controller {
         System.out.println("Message received: " + message);
         switch (command) {
             case "STORE": handleStore(parts,socket); break;
-            case "LOAD": handleLoad(); break;
+            case "LOAD": handleLoad(parts ,socket); break;
             case "REMOVE": handleRemove(); break;
             case "LIST": handleList(socket); break;
             case "RELOAD": handleReload(); break;
             case "JOIN": handleJoin(message , socket); break;
-            case "STORE_ACK": handleStoreAck(message); break;
+            case "STORE_ACK": handleStoreAck(message, socket); break;
             case "REMOVE_ACK": handleRemoveAck(); break;
             case "ERROR_FILE_DOES_NOT_EXIST": handleRemoveAck(); break; // same effect
             case "REBALANCE_COMPLETE": handleRebalanceComplete(); break;
@@ -123,9 +123,8 @@ public class Controller {
         pendingAcks.put(filename, 0);
     }
 
-    private void handleStoreAck(String message) {
-        // 1) Parse the filename from the incoming message
-        //    message looks like "STORE_ACK filename"
+    private void handleStoreAck(String message , Socket dStoreSocket) throws IOException {
+        int port = dStoreSocket.getPort();
         String[] parts = message.split(" ", 2);
         if (parts.length < 2) {
             System.err.println("Malformed STORE_ACK: " + message);
@@ -135,6 +134,7 @@ public class Controller {
 
         // 2) Look up the FileInfo; guard against it being null
         FileInfo info = index.getFileInfo(filename);
+        info.addDStorePorts(port);
         if (info == null) {
             System.err.println("STORE_ACK for unknown file: " + filename);
             return;
@@ -160,8 +160,14 @@ public class Controller {
         }
     }
 
-    private void handleLoad() {
-
+    private void handleLoad(String[] message, Socket socket) throws IOException {
+        String filename = message[1];
+        FileInfo fileInfo = index.getFileInfo(filename);
+        TCPSender tcpSender = new TCPSender(socket);
+        int port = fileInfo.getdStorePorts().getFirst();
+        StringBuilder stringBuilder = new StringBuilder(Protocol.LOAD_FROM_TOKEN);
+        stringBuilder.append(" ").append(port).append(" ").append(fileInfo.getFileSize());
+        tcpSender.sendOneWay(stringBuilder.toString());
     }
 
     private void handleRemove() {

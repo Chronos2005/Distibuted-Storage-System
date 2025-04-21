@@ -88,6 +88,10 @@ public class DStore {
 
                 break;
 
+            case Protocol.LOAD_DATA_TOKEN:
+                handleLoad(parts, socket);
+                break;
+
             default:
                 System.err.println("Dstore received unknown command: " + command);
         }
@@ -113,6 +117,11 @@ public class DStore {
 
         // 4. Notify Controller via persistent TCPSender
         controllerSender.sendOneWay(Protocol.STORE_ACK_TOKEN + " " + filename);
+    }
+
+    private void handleLoad(String[] message , Socket socket) throws IOException {
+        TCPSender clientSender = new TCPSender(socket);
+        clientSender.sendFile(fileFolder,message[1]);
     }
 
 
