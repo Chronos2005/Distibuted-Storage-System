@@ -21,6 +21,7 @@ public class LoadDataHandler implements CommandHandler {
         TCPSender sender = new TCPSender(clientSocket);
         if (!sender.sendFile(fileFolder, filename)) {
             System.err.println("Failed to send file: " + filename);
+            clientSocket.close();
         }
     }
 }
