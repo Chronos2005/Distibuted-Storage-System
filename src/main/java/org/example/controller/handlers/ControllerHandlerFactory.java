@@ -23,8 +23,8 @@ public class ControllerHandlerFactory {
         handlers.put(Protocol.LIST_TOKEN,             new ListHandler(ctrl));
 //        handlers.put(Protocol.REBALANCE_COMPLETE_TOKEN,
 //                new RebalanceCompleteHandler(ctrl));
-//        // If you later implement RELOAD, add it here:
-//        // handlers.put(Protocol.RELOAD_TOKEN, new ReloadHandler(ctrl));
+
+        handlers.put(Protocol.RELOAD_TOKEN, new ReloadHandler(ctrl));
     }
 
     public CommandHandler get(String command) {

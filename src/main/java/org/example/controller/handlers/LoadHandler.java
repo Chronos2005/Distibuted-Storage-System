@@ -22,6 +22,12 @@ public class LoadHandler implements CommandHandler {
             return;
         }
 
+        // Check if enough Dstores are available
+        if (ctrl.getDstoreSenders().size() < ctrl.getReplicationFactor()) {
+            new TCPSender(clientSocket).sendOneWay(Protocol.ERROR_NOT_ENOUGH_DSTORES_TOKEN);
+            return;
+        }
+
         String filename = parts[1];
         FileInfo info = ctrl.getIndex().getFileInfo(filename);
 
@@ -31,11 +37,7 @@ public class LoadHandler implements CommandHandler {
             return;
         }
 
-        // Check if enough Dstores are available
-        if (ctrl.getDstoreSenders().size() < ctrl.getReplicationFactor()) {
-            new TCPSender(clientSocket).sendOneWay(Protocol.ERROR_NOT_ENOUGH_DSTORES_TOKEN);
-            return;
-        }
+
 
         int dport = info.getdStorePorts().getFirst();
         String resp = Protocol.LOAD_FROM_TOKEN + " " + dport + " " + info.getFileSize();
