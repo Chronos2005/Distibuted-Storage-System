@@ -22,7 +22,7 @@ public class StoreHandler implements CommandHandler {
     @Override
     public void handle(String[] parts, Socket clientSocket) throws IOException {
     // parts = ["STORE", "filename filesize"]
-    if (parts.length == 2) {
+
       String[] args = parts[1].split(" ");
       String filename = args[0];
       int filesize = Integer.parseInt(args[1]);
@@ -43,9 +43,7 @@ public class StoreHandler implements CommandHandler {
 
       // 4) Notify Controller
       controllerSender.sendOneWay(Protocol.STORE_ACK_TOKEN + " " + filename);
-    }
-    else{
-      System.out.println("Store message is malformed");
-    }
+
+
     }
 }

@@ -17,6 +17,9 @@ public class ListHandler implements CommandHandler {
 
     @Override
     public void handle(String[] parts, Socket clientSocket) throws IOException {
+        if (parts.length != 1) {
+            return;
+        }
         TCPSender client = new TCPSender(clientSocket);
         if (ctrl.getDstoreSenders().size() < ctrl.getReplicationFactor()) {
             client.sendOneWay(Protocol.ERROR_NOT_ENOUGH_DSTORES_TOKEN);

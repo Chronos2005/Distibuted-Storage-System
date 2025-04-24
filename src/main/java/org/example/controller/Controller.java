@@ -11,6 +11,9 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class Controller {
     private final int                 replicationFactor;
@@ -22,13 +25,15 @@ public class Controller {
     private final Map<String,Integer>      pendingAcks       = new ConcurrentHashMap<>();
     private final Map<String,TCPSender>    pendingRemoveClients = new ConcurrentHashMap<>();
     private final Map<String,Integer>      pendingRemoveAcks    = new ConcurrentHashMap<>();
-
     private final ControllerHandlerFactory factory;
+    private final int timeout;
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     public Controller(int cport, int R, int timeout, int rebalancePeriod) throws IOException {
         this.replicationFactor = R;
         this.receiver          = new TCPReceiver(cport, this::dispatch);
         this.factory           = new ControllerHandlerFactory(this);
+        this.timeout          = timeout;
     }
 
     public static void main(String[] args) throws Exception {
@@ -105,4 +110,20 @@ public class Controller {
         pendingRemoveAcks.remove(filename);
         return pendingRemoveClients.remove(filename);
     }
+
+    public void scheduleStoreTimeout(String filename) {
+        scheduler.schedule(() -> {
+            int ackCount = pendingAcks.getOrDefault(filename, 0);
+            if (ackCount < replicationFactor) {
+                System.err.println("STORE failed due to timeout for file: " + filename);
+                index.removeFileInfo(filename);
+                pendingAcks.remove(filename);
+                TCPSender client = pendingClients.remove(filename);
+                if (client != null) {
+                    client.sendOneWay("ERROR_STORE_FAILED"); // Or define a proper protocol constant
+                }
+            }
+        }, timeout, TimeUnit.MILLISECONDS);
+    }
+
 }
