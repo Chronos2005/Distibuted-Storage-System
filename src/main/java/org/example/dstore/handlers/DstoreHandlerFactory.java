@@ -1,5 +1,7 @@
 package org.example.dstore.handlers;
 
+import org.example.Networking.TCPSender;
+import org.example.dstore.DStore;
 import org.example.handlers.CommandHandler;
 import org.example.Protocol.Protocol;
 
@@ -9,7 +11,9 @@ import java.util.Map;
 public class DstoreHandlerFactory {
     private final Map<String, CommandHandler> handlers = new HashMap<>();
 
-    public DstoreHandlerFactory(String fileFolder, org.example.Networking.TCPSender controllerSender) {
+
+
+    public DstoreHandlerFactory(String fileFolder, TCPSender controllerSender ) {
         handlers.put(Protocol.STORE_TOKEN,      new StoreHandler(fileFolder, controllerSender));
         handlers.put(Protocol.LOAD_DATA_TOKEN,  new LoadDataHandler(fileFolder));
         handlers.put(Protocol.REMOVE_TOKEN,     new RemoveHandler(fileFolder, controllerSender));
