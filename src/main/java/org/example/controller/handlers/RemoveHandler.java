@@ -32,7 +32,7 @@ public class RemoveHandler implements CommandHandler {
 
         List<Integer> dsts = info.getdStorePorts();
         for (int p : dsts) {
-            TCPSender ds = ctrl.getDstoreSenders().get(p);
+            TCPSender ds = ctrl.getDstorePortstoSenders().get(p);
             if (ds != null) {
                 ds.sendOneWay(Protocol.REMOVE_TOKEN + " " + filename);
             }

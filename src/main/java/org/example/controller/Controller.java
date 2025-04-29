@@ -16,7 +16,7 @@ public class Controller {
     private final int                 replicationFactor;
     private final TCPReceiver         receiver;
     private final Index index = new Index();
-    private final Map<Integer,TCPSender>   dstoreSenders    = new ConcurrentHashMap<>();
+    private final Map<Integer,TCPSender> dstorePortstoSenders = new ConcurrentHashMap<>();
     private final Map<Socket,Integer>      socketToDstorePort= new ConcurrentHashMap<>();
     private final Map<String,TCPSender>    pendingClients    = new ConcurrentHashMap<>();
     private final Map<String,Integer>      pendingAcks       = new ConcurrentHashMap<>();
@@ -61,11 +61,11 @@ public class Controller {
 
     public Index getIndex() { return index; }
     public int getReplicationFactor() { return replicationFactor; }
-    public Map<Integer,TCPSender> getDstoreSenders() { return dstoreSenders; }
+    public Map<Integer,TCPSender> getDstorePortstoSenders() { return dstorePortstoSenders; }
     public Map<Socket,Integer> getSocketToPort() { return socketToDstorePort; }
 
     public void addDstore(int port, TCPSender sender) {
-        dstoreSenders.put(port, sender);
+        dstorePortstoSenders.put(port, sender);
         System.out.println("Dstore added: " + port);
     }
     public void mapSocketToPort(Socket s,int port) {
@@ -74,7 +74,7 @@ public class Controller {
 
     public ArrayList<Integer> selectLeastLoadedDstores() {
         var counts = index.getFileCountPerDstore();
-        var ports = new ArrayList<>(dstoreSenders.keySet());
+        var ports = new ArrayList<>(dstorePortstoSenders.keySet());
         ports.sort(Comparator.comparingInt(p -> counts.getOrDefault(p, 0)));
         if (ports.size() < replicationFactor) {
             throw new IllegalStateException("Not enough Dstores");
@@ -105,4 +105,21 @@ public class Controller {
         pendingRemoveAcks.remove(filename);
         return pendingRemoveClients.remove(filename);
     }
+
+    public void handleRebalance() {
+        System.out.println("Starting rebalance...");
+
+        Map<Integer, List<String>> dstoreFiles = new HashMap<>();
+
+        // 1. Ask all Dstores for LIST
+        for (Map.Entry<Integer, TCPSender> entry : dstorePortstoSenders.entrySet()) {
+            int dstorePort = entry.getKey();
+            TCPSender sender = entry.getValue();
+
+            sender.sendOneWay(Protocol.LIST_TOKEN);
+
+        }
+
+    }
+
 }
