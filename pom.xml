@@ -20,7 +20,7 @@
             <artifactId>client</artifactId>
             <version>1.0</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/libs/client.jar</systemPath>
+            <systemPath>src/client.jar</systemPath>
         </dependency>
     </dependencies>
 

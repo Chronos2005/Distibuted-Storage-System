@@ -1,10 +1,3 @@
-package org.example.dstore.handlers;
-
-import org.example.Networking.TCPSender;
-import org.example.dstore.DStore;
-import org.example.handlers.CommandHandler;
-import org.example.Protocol.Protocol;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,9 +7,9 @@ public class DstoreHandlerFactory {
 
 
     public DstoreHandlerFactory(String fileFolder, TCPSender controllerSender ) {
-        handlers.put(Protocol.STORE_TOKEN,      new StoreHandler(fileFolder, controllerSender));
-        handlers.put(Protocol.LOAD_DATA_TOKEN,  new LoadDataHandler(fileFolder));
-        handlers.put(Protocol.REMOVE_TOKEN,     new RemoveHandler(fileFolder, controllerSender));
+        handlers.put(Protocol.STORE_TOKEN,      new DStoreStoreHandler(fileFolder, controllerSender));
+        handlers.put(Protocol.LOAD_DATA_TOKEN,  new DStoreLoadDataHandler(fileFolder));
+        handlers.put(Protocol.REMOVE_TOKEN,     new DStoreRemoveHandler(fileFolder, controllerSender));
         // If you add rebalance later, wire it here:
         // handlers.put(Protocol.REBALANCE_TOKEN,        new RebalanceHandler(...));
         // handlers.put(Protocol.REBALANCE_STORE_TOKEN,  new RebalanceStoreHandler(...));

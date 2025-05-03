@@ -1,5 +1,3 @@
-package org.example.Protocol;
-
 /**
  * This class defines the String tokens you can use when implementing the communication protocol for the COMP2207 24/25 Coursework
  *

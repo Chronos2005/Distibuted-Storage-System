@@ -1,13 +1,3 @@
-package org.example.controller.handlers;
-
-
-import org.example.Index.FileInfo;
-import org.example.Index.Index;
-import org.example.Networking.TCPSender;
-import org.example.Protocol.Protocol;
-import org.example.controller.Controller;
-import org.example.handlers.CommandHandler;
-
 import java.io.IOException;
 import java.net.Socket;
 

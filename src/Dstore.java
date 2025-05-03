@@ -1,23 +1,16 @@
-// src/main/java/org/example/DStore.java
-package org.example.dstore;
 
-import org.example.Networking.TCPReceiver;
-import org.example.Networking.TCPSender;
-import org.example.Protocol.Protocol;
-import org.example.handlers.CommandHandler;
-import org.example.dstore.handlers.DstoreHandlerFactory;
 
 import java.io.IOException;
 import java.net.Socket;
 
-public class DStore {
+public class Dstore {
 
     private final TCPReceiver receiver;
     private final TCPSender   controllerSender;
     private final DstoreHandlerFactory handlerFactory;
     private final int port;
 
-    public DStore(int port, int controllerPort, int timeout, String fileFolder)
+    public Dstore(int port, int controllerPort, int timeout, String fileFolder)
             throws IOException {
         this.port = port;
 
@@ -66,6 +59,6 @@ public class DStore {
         int timeout       = Integer.parseInt(args[2]);
         String fileFolder = args[3];
 
-        new DStore(port, cport, timeout, fileFolder).start();
+        new Dstore(port, cport, timeout, fileFolder).start();
     }
 }

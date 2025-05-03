@@ -1,5 +1,3 @@
-package org.example.handlers;
-
 import java.io.IOException;
 import java.net.Socket;
 

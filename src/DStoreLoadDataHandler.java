@@ -1,16 +1,10 @@
-
-package org.example.dstore.handlers;
-
-import org.example.Networking.TCPSender;
-import org.example.handlers.CommandHandler;
-
 import java.io.IOException;
 import java.net.Socket;
 
-public class LoadDataHandler implements CommandHandler {
+public class DStoreLoadDataHandler implements CommandHandler {
     private final String fileFolder;
 
-    public LoadDataHandler(String fileFolder) {
+    public DStoreLoadDataHandler(String fileFolder) {
         this.fileFolder = fileFolder;
     }
 

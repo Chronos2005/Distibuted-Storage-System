@@ -1,20 +1,14 @@
-package org.example.dstore.handlers;
-
-import org.example.Networking.TCPSender;
-import org.example.Protocol.Protocol;
-import org.example.handlers.CommandHandler;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
 
-public class StoreHandler implements CommandHandler {
+public class DStoreStoreHandler implements CommandHandler {
     private final String fileFolder;
     private final TCPSender controllerSender;
 
-    public StoreHandler(String fileFolder, TCPSender controllerSender) {
+    public DStoreStoreHandler(String fileFolder, TCPSender controllerSender) {
         this.fileFolder        = fileFolder;
         this.controllerSender  = controllerSender;
     }

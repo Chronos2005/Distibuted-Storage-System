@@ -1,12 +1,3 @@
-package org.example.controller;
-
-import org.example.Index.Index;
-import org.example.Networking.TCPReceiver;
-import org.example.Networking.TCPSender;
-import org.example.Protocol.Protocol;
-import org.example.controller.handlers.ControllerHandlerFactory;
-import org.example.handlers.CommandHandler;
-
 import java.io.IOException;
 import java.net.Socket;
 import java.util.*;
@@ -24,11 +15,13 @@ public class Controller {
     private final Map<String,Integer>      pendingRemoveAcks    = new ConcurrentHashMap<>();
 
     private final ControllerHandlerFactory factory;
+    private final ListHandler listHandler;
 
     public Controller(int cport, int R, int timeout, int rebalancePeriod) throws IOException {
         this.replicationFactor = R;
         this.receiver          = new TCPReceiver(cport, this::dispatch);
         this.factory           = new ControllerHandlerFactory(this);
+        this.listHandler     = new ListHandler(this);
     }
 
     public static void main(String[] args) throws Exception {

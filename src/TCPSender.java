@@ -1,5 +1,3 @@
-package org.example.Networking;
-
 import java.io.*;
 import java.net.Socket;
 import java.net.SocketTimeoutException;

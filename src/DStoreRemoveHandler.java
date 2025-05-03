@@ -1,19 +1,12 @@
-
-package org.example.dstore.handlers;
-
-import org.example.Networking.TCPSender;
-import org.example.Protocol.Protocol;
-import org.example.handlers.CommandHandler;
-
 import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
 
-public class RemoveHandler implements CommandHandler {
+public class DStoreRemoveHandler implements CommandHandler {
     private final String fileFolder;
     private final TCPSender controllerSender;
 
-    public RemoveHandler(String fileFolder, TCPSender controllerSender) {
+    public DStoreRemoveHandler(String fileFolder, TCPSender controllerSender) {
         this.fileFolder       = fileFolder;
         this.controllerSender = controllerSender;
     }
