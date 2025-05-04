@@ -1,7 +1,14 @@
+
+
 import java.io.IOException;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class Controller {
     private final int                 replicationFactor;
@@ -15,13 +22,17 @@ public class Controller {
     private final Map<String,Integer>      pendingRemoveAcks    = new ConcurrentHashMap<>();
 
     private final ControllerHandlerFactory factory;
-    private final ListHandler listHandler;
+    private final int timeout;
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+    // map from clientSocket+filename → list of candidate Dstore ports
+    private final Map<String,List<Integer>> loadCandidates = new ConcurrentHashMap<>();
 
     public Controller(int cport, int R, int timeout, int rebalancePeriod) throws IOException {
         this.replicationFactor = R;
         this.receiver          = new TCPReceiver(cport, this::dispatch);
         this.factory           = new ControllerHandlerFactory(this);
-        this.listHandler     = new ListHandler(this);
+        this.timeout          = timeout;
     }
 
     public static void main(String[] args) throws Exception {
@@ -98,6 +109,39 @@ public class Controller {
         pendingRemoveAcks.remove(filename);
         return pendingRemoveClients.remove(filename);
     }
+
+    public void scheduleStoreTimeout(String filename) {
+        scheduler.schedule(() -> {
+            int ackCount = pendingAcks.getOrDefault(filename, 0);
+            if (ackCount < replicationFactor) {
+                System.err.println("STORE failed due to timeout for file: " + filename);
+                index.removeFileInfo(filename);
+                pendingAcks.remove(filename);
+                TCPSender client = pendingClients.remove(filename);
+                if (client != null) {
+                    client.sendOneWay("ERROR_STORE_FAILED"); // Or define a proper protocol constant
+                }
+            }
+        }, timeout, TimeUnit.MILLISECONDS);
+    }
+
+
+    public void trackLoadRequest(String filename, Socket client, List<Integer> ports) {
+        loadCandidates.put(client.getRemoteSocketAddress() + "|" + filename, new ArrayList<>(ports));
+    }
+    public int nextLoadPort(String filename, Socket client) {
+        String key = client.getRemoteSocketAddress() + "|" + filename;
+        List<Integer> ports = loadCandidates.getOrDefault(key, List.of());
+        if (ports.isEmpty()) return -1;
+        // rotate list: drop the one just tried
+        int tried = ports.remove(0);
+        if (ports.isEmpty()) return -1;
+        return ports.get(0);
+    }
+    public void clearLoadRequest(String filename, Socket client) {
+        loadCandidates.remove(client.getRemoteSocketAddress() + "|" + filename);
+    }
+
 
     public void handleRebalance() {
         System.out.println("Starting rebalance...");

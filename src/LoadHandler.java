@@ -8,6 +8,17 @@ public class LoadHandler implements CommandHandler {
     @Override
     public void handle(String[] parts, Socket clientSocket) throws IOException {
         // parts = ["<LOAD>", "filename"]
+        String[] args = parts[1].split(" ");
+        if (args.length != 1) {
+            return;
+        }
+
+        // Check if enough Dstores are available
+        if (ctrl.getDstoreSenders().size() < ctrl.getReplicationFactor()) {
+            new TCPSender(clientSocket).sendOneWay(Protocol.ERROR_NOT_ENOUGH_DSTORES_TOKEN);
+            return;
+        }
+
         String filename = parts[1];
         FileInfo info = ctrl.getIndex().getFileInfo(filename);
 
@@ -17,7 +28,9 @@ public class LoadHandler implements CommandHandler {
             return;
         }
 
-        int dport = info.getdStorePorts().get(0);
+
+
+        int dport = info.getdStorePorts().getFirst();
         String resp = Protocol.LOAD_FROM_TOKEN + " " + dport + " " + info.getFileSize();
         client.sendOneWay(resp);
     }

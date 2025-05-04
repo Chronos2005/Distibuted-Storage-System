@@ -10,6 +10,16 @@ public class RemoveHandler implements CommandHandler {
     public void handle(String[] parts, Socket clientSocket) throws IOException {
         // parts = ["<REMOVE>", "filename"]
         String filename = parts[1];
+        String[] args = parts[1].split(" ");
+        if (args.length != 1) {
+            return;
+        }
+
+        // Check if enough Dstores are available
+        if (ctrl.getDstoreSenders().size() < ctrl.getReplicationFactor()) {
+            new TCPSender(clientSocket).sendOneWay(Protocol.ERROR_NOT_ENOUGH_DSTORES_TOKEN);
+            return;
+        }
         FileInfo info = ctrl.getIndex().getFileInfo(filename);
         TCPSender client = new TCPSender(clientSocket);
 

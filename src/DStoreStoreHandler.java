@@ -15,26 +15,29 @@ public class DStoreStoreHandler implements CommandHandler {
 
     @Override
     public void handle(String[] parts, Socket clientSocket) throws IOException {
-        // parts = ["STORE", "filename filesize"]
-        String[] args     = parts[1].split(" ");
-        String filename   = args[0];
-        int filesize      = Integer.parseInt(args[1]);
+    // parts = ["STORE", "filename filesize"]
 
-        // 1) ACK to client
-        new TCPSender(clientSocket).sendOneWay(Protocol.ACK_TOKEN);
+      String[] args = parts[1].split(" ");
+      String filename = args[0];
+      int filesize = Integer.parseInt(args[1]);
 
-        // 2) Read file content
-        InputStream in = clientSocket.getInputStream();
-        byte[] data    = in.readNBytes(filesize);
+      // 1) ACK to client
+      new TCPSender(clientSocket).sendOneWay(Protocol.ACK_TOKEN);
 
-        // 3) Save to disk
-        File outFile = new File(fileFolder, filename);
-        try (FileOutputStream fos = new FileOutputStream(outFile)) {
-            fos.write(data);
-        }
-        System.out.println("Stored: " + filename);
+      // 2) Read file content
+      InputStream in = clientSocket.getInputStream();
+      byte[] data = in.readNBytes(filesize);
 
-        // 4) Notify Controller
-        controllerSender.sendOneWay(Protocol.STORE_ACK_TOKEN + " " + filename);
+      // 3) Save to disk
+      File outFile = new File(fileFolder, filename);
+      try (FileOutputStream fos = new FileOutputStream(outFile)) {
+        fos.write(data);
+      }
+      System.out.println("Stored: " + filename);
+
+      // 4) Notify Controller
+      controllerSender.sendOneWay(Protocol.STORE_ACK_TOKEN + " " + filename);
+
+
     }
 }
