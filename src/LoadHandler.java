@@ -14,7 +14,7 @@ public class LoadHandler implements CommandHandler {
         }
 
         // Check if enough Dstores are available
-        if (ctrl.getDstoreSenders().size() < ctrl.getReplicationFactor()) {
+        if (ctrl.getDstorePortstoSenders().size() < ctrl.getReplicationFactor()) {
             new TCPSender(clientSocket).sendOneWay(Protocol.ERROR_NOT_ENOUGH_DSTORES_TOKEN);
             return;
         }
