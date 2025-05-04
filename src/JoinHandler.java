@@ -10,7 +10,7 @@ public class JoinHandler implements CommandHandler {
         // parts = ["<JOIN>", "<dstorePort>"]
         int dport = Integer.parseInt(parts[1]);
         // Open persistent sender back to the Dstore's listening port:
-        TCPSender sender = new TCPSender("localhost", dport);
+        TCPSender sender = new TCPSender(socket);
         ctrl.addDstore(dport, sender);
         // Map the incoming socket → the dstore port for later ACKs:
         ctrl.mapSocketToPort(socket, dport);
