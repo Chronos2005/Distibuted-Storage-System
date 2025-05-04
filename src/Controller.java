@@ -118,9 +118,6 @@ public class Controller {
                 index.removeFileInfo(filename);
                 pendingAcks.remove(filename);
                 TCPSender client = pendingClients.remove(filename);
-                if (client != null) {
-                    client.sendOneWay("ERROR_STORE_FAILED"); // Or define a proper protocol constant
-                }
             }
         }, timeout, TimeUnit.MILLISECONDS);
     }
