@@ -33,5 +33,7 @@ public class LoadHandler implements CommandHandler {
         int dport = info.getdStorePorts().getFirst();
         String resp = Protocol.LOAD_FROM_TOKEN + " " + dport + " " + info.getFileSize();
         client.sendOneWay(resp);
+        ctrl.trackLoadRequest(filename, clientSocket, info.getdStorePorts());
+        System.out.println("ports: " + info.getdStorePorts());
     }
 }

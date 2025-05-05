@@ -132,6 +132,7 @@ public class Controller {
         if (ports.isEmpty()) return -1;
         // rotate list: drop the one just tried
         int tried = ports.remove(0);
+        System.out.println("The remaining ports are: " + ports);
         if (ports.isEmpty()) return -1;
         return ports.get(0);
     }

@@ -36,10 +36,8 @@ echo "📝 Preparing test file..."
 
 # Run ClientMain tests
 echo "🧪 Running client tests..."
-for op in store list load remove; do
-    echo "➡️ Testing: $op"
-    java -cp client/client.jar:bin ClientMain $C_PORT 1000 store 5
-    echo
+java -cp client/client.jar:bin ClientMain $C_PORT 1000 "reload" 5
+
 done
 
 echo "✅ Tests completed. Close terminal windows when done."

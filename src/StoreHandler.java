@@ -53,6 +53,7 @@ public class StoreHandler implements CommandHandler {
     ArrayList<Integer> dstores = ctrl.selectLeastLoadedDstores();
     ctrl.getIndex().setFileInfo(filename,
             new FileInfo(Index.FileState.STORE_IN_PROGRESS, fileSize, new ArrayList<>(dstores)));
+    System.out.println("Selected Dstores for " + filename + ": " + dstores);
 
     // Track the pending client and prepare response
     TCPSender clientSender = new TCPSender(clientSocket);

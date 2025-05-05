@@ -21,7 +21,7 @@ public class StoreAckHandler implements CommandHandler {
             System.err.println("STORE_ACK for unknown file: " + filename);
             return;
         }
-        info.addDStorePorts(dport);
+
 
         int count = ctrl.incrementStoreAck(filename);
         System.out.printf("✔ STORE_ACK %s (%d/%d)%n",
