@@ -1,11 +1,12 @@
 import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class FileInfo {
 
     private Index.FileState fileState;
     private int fileSize;
-    private ArrayList<Integer> dStorePorts = new ArrayList<>();
-    public FileInfo(Index.FileState fileState, int fileSize, ArrayList<Integer> dStorePorts){
+    private CopyOnWriteArrayList<Integer> dStorePorts;
+    public FileInfo(Index.FileState fileState, int fileSize, CopyOnWriteArrayList<Integer> dStorePorts){
         this.fileState = fileState;
         this.fileSize = fileSize;
         this.dStorePorts = dStorePorts;
@@ -19,7 +20,7 @@ public class FileInfo {
     public int getFileSize() {
         return fileSize;
     }
-    public ArrayList<Integer> getdStorePorts() {
+    public CopyOnWriteArrayList<Integer> getdStorePorts() {
         return dStorePorts;
     }
 
