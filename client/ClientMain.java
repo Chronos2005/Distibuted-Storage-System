@@ -41,6 +41,9 @@ public class ClientMain {
 				case "remove":
 					testRemove(client, count);
 					break;
+				case "reload":
+					reloadTest(client);
+					break;
 				default:
 					System.err.println("Unknown operation: " + op);
 			}
@@ -229,5 +232,19 @@ public class ClientMain {
 		} catch (IOException e) {
 			System.err.println("I/O error: " + e.getMessage());
 		}
+	}
+
+
+	private static void reloadTest(Client client) throws IOException {
+		File  toStore = new File("to_store");
+		if (!toStore.exists()) {
+			toStore.mkdirs();
+		}
+		File testFile = new File(toStore, "test.txt");
+		if (!testFile.exists()) {
+			testFile.createNewFile();
+		}
+		client.store(testFile);
+		client.wrongLoad("test.txt",5);
 	}
 }
