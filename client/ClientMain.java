@@ -187,51 +187,15 @@ public class ClientMain {
 		}
 	}
 
-	private static void testRemove(Client client, int count) {
-		try {
-			// First get list of files available
-			String[] availableFiles = client.list();
-			if (availableFiles.length == 0) {
-				System.err.println("No files available to remove.");
-				return;
-			}
-
-			System.out.println("==== Performing " + count + " remove operations ====");
-			int successCount = 0;
-
-			for (int i = 0; i < count && i < availableFiles.length; i++) {
-				String filename = availableFiles[i];
-
-				System.out.println("\nRemove operation #" + (i+1) + ": " + filename);
-
-				try {
-					client.remove(filename);
-
-					// Check if removal was successful
-					String[] updatedList = client.list();
-					boolean stillExists = Arrays.asList(updatedList).contains(filename);
-
-					if (stillExists) {
-						System.err.println("❌ Remove failed: " + filename + " still appears in file list.");
-					} else {
-						System.out.println("✅ Remove successful: " + filename + " no longer in file list.");
-						successCount++;
-					}
-				} catch (FileDoesNotExistException e) {
-					System.err.println("❌ File does not exist: " + filename);
-				} catch (Exception e) {
-					System.err.println("❌ Error removing file: " + e.getMessage());
-				}
-			}
-
-			System.out.println("\n==== Remove operations summary ====");
-			System.out.println("Successful: " + successCount + "/" + (Math.min(count, availableFiles.length)));
-
-		} catch (NotEnoughDstoresException e) {
-			System.err.println("Not enough Dstores available for listing files.");
-		} catch (IOException e) {
-			System.err.println("I/O error: " + e.getMessage());
+	private static void testRemove(Client client, int count) throws IOException {
+		File  toStore = new File("to_store");
+		if (!toStore.exists()) {
+			toStore.mkdirs();
 		}
+		File testFile = new File(toStore, "test.txt");
+		client.store(testFile);
+		client.remove(testFile.getName());
+
 	}
 
 
