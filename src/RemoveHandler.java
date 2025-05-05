@@ -32,6 +32,7 @@ public class RemoveHandler implements CommandHandler {
         ctrl.trackPendingRemove(filename, client);
 
         List<Integer> dsts = info.getdStorePorts();
+        System.out.println("Removing from: " + dsts);
         for (int p : dsts) {
             TCPSender ds = ctrl.getDstorePortstoSenders().get(p);
             if (ds != null) {

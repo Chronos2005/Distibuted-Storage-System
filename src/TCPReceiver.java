@@ -41,6 +41,7 @@ public class TCPReceiver {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
+                System.out.println("Received: " + line);
                 handler.handle(line, socket);
             }
         } catch (IOException e) {
@@ -50,6 +51,10 @@ public class TCPReceiver {
                 socket.close();
             } catch (IOException ignored) {}
         }
+    }
+
+    public void attach(Socket s) {
+        new Thread(() -> handleClient(s)).start();
     }
 
 }

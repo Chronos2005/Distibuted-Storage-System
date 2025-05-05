@@ -134,6 +134,11 @@ public class TCPSender {
     }
   }
 
+    public Socket getSocket() {
+        return socket;
+    }
+
+
 
 
 

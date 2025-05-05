@@ -22,6 +22,7 @@ public class Dstore {
 
         // 3) Listen for incoming connections on Dstore port
         this.receiver = new TCPReceiver(port, this::dispatch);
+        receiver.attach(controllerSender.getSocket());
 
         System.out.printf("DStore[%d] → Controller:%d, folder=%s%n",
                 port, controllerPort, fileFolder);
