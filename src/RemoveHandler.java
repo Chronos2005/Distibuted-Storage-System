@@ -10,28 +10,37 @@ public class RemoveHandler implements CommandHandler {
     public void handle(String[] parts, Socket clientSocket) throws IOException {
         // parts = ["<REMOVE>", "filename"]
         String filename = parts[1];
+
+        // Ensure correct args
         String[] args = parts[1].split(" ");
-        if (args.length != 1) {
-            return;
-        }
+        if (args.length != 1) return;
 
-        // Check if enough Dstores are available
+        // Check enough Dstores
         if (ctrl.getDstorePortstoSenders().size() < ctrl.getReplicationFactor()) {
-            new TCPSender(clientSocket).sendOneWay(Protocol.ERROR_NOT_ENOUGH_DSTORES_TOKEN);
+            new TCPSender(clientSocket)
+                    .sendOneWay(Protocol.ERROR_NOT_ENOUGH_DSTORES_TOKEN);
             return;
         }
-        FileInfo info = ctrl.getIndex().getFileInfo(filename);
+
+        // Atomically check file exists and mark remove in progress
+        synchronized (ctrl.getIndex()) {
+            FileInfo info = ctrl.getIndex().getFileInfo(filename);
+            if (info == null || info.getFileState() != Index.FileState.STORE_COMPLETE) {
+                new TCPSender(clientSocket)
+                        .sendOneWay(Protocol.ERROR_FILE_DOES_NOT_EXIST_TOKEN);
+                return;
+            }
+            info.setFileState(Index.FileState.REMOVE_IN_PROGRESS);
+        }
+
+        // Track pending acks and send REMOVE to dstores
         TCPSender client = new TCPSender(clientSocket);
-
-        if (info == null || info.getFileState() != Index.FileState.STORE_COMPLETE) {
-            client.sendOneWay(Protocol.ERROR_FILE_DOES_NOT_EXIST_TOKEN);
-            return;
-        }
-
-        info.setFileState(Index.FileState.REMOVE_IN_PROGRESS);
         ctrl.trackPendingRemove(filename, client);
 
-        List<Integer> dsts = info.getdStorePorts();
+        List<Integer> dsts;
+        synchronized (ctrl.getIndex()) {
+            dsts = List.copyOf(ctrl.getIndex().getFileInfo(filename).getdStorePorts());
+        }
         System.out.println("Removing from: " + dsts);
         for (int p : dsts) {
             TCPSender ds = ctrl.getDstorePortstoSenders().get(p);
@@ -40,4 +49,5 @@ public class RemoveHandler implements CommandHandler {
             }
         }
     }
+
 }
