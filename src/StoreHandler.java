@@ -63,13 +63,17 @@ public class StoreHandler implements CommandHandler {
 
     // Track the pending client and send STORE_TO response
     TCPSender clientSender = new TCPSender(clientSocket);
-    ctrl.trackPendingStore(filename, clientSender);
+
 
     StringBuilder resp = new StringBuilder(Protocol.STORE_TO_TOKEN);
     for (int p : dstores) {
       resp.append(" ").append(p);
     }
     clientSender.sendOneWay(resp.toString());
-    // ctrl.scheduleStoreTimeout(filename);
+      try {
+          ctrl.scheduleStoreTimeout(filename, clientSender);
+      } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+      }
   }
 }

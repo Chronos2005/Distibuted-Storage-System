@@ -3,10 +3,7 @@
 import java.io.IOException;
 import java.net.Socket;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -20,6 +17,8 @@ public class Controller {
     private final Map<String,Integer>      pendingAcks       = new ConcurrentHashMap<>();
     private final Map<String,TCPSender>    pendingRemoveClients = new ConcurrentHashMap<>();
     private final Map<String,Integer>      pendingRemoveAcks    = new ConcurrentHashMap<>();
+    private final Map<String, CountDownLatch>    pendingLatches = new ConcurrentHashMap<>();
+
 
     private final ControllerHandlerFactory factory;
     private final int timeout;
@@ -86,17 +85,9 @@ public class Controller {
         return new ArrayList<>(ports.subList(0, replicationFactor));
     }
 
-    public void trackPendingStore(String filename, TCPSender client) {
-        pendingClients.put(filename, client);
-        pendingAcks.put(filename, 0);
-    }
-    public int incrementStoreAck(String filename) {
-        return pendingAcks.merge(filename,1,Integer::sum);
-    }
-    public TCPSender completeStore(String filename) {
-        pendingAcks.remove(filename);
-        return pendingClients.remove(filename);
-    }
+
+
+
 
     public void trackPendingRemove(String filename, TCPSender client) {
         pendingRemoveClients.put(filename, client);
@@ -110,16 +101,24 @@ public class Controller {
         return pendingRemoveClients.remove(filename);
     }
 
-    public void scheduleStoreTimeout(String filename) {
-        scheduler.schedule(() -> {
-            int ackCount = pendingAcks.getOrDefault(filename, 0);
-            if (ackCount < replicationFactor) {
-                System.err.println("STORE failed due to timeout for file: " + filename);
-                index.removeFileInfo(filename);
-                pendingAcks.remove(filename);
-                TCPSender client = pendingClients.remove(filename);
+    public void scheduleStoreTimeout(String filename, TCPSender clientSender) throws InterruptedException {
+       CountDownLatch latch = new CountDownLatch(replicationFactor);
+
+        pendingLatches.put(filename, latch);
+        pendingClients.put(filename, clientSender);
+
+        scheduler.execute(() -> {
+            try {
+                boolean success = latch.await(timeout, TimeUnit.MILLISECONDS);
+                if (success)  onStoreSuccess(filename);
+                else          onStoreTimeout(filename);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
-        }, timeout, TimeUnit.MILLISECONDS);
+        });
+
+
+
     }
 
 
@@ -156,5 +155,33 @@ public class Controller {
         }
 
     }
+
+    public void onStoreSuccess(String filename) {
+        pendingLatches.remove(filename);
+        TCPSender client = pendingClients.remove(filename);
+
+        synchronized (index) {
+            index.getFileInfo(filename).setFileState(Index.FileState.STORE_COMPLETE);
+        }
+        if (client != null) client.sendOneWay(Protocol.STORE_COMPLETE_TOKEN);
+        System.out.println("→ STORE_COMPLETE for " + filename);
+    }
+
+    public void onStoreTimeout(String filename) {
+        CountDownLatch latch = pendingLatches.remove(filename);
+        if (latch != null && latch.getCount() > 0) {
+            System.err.println("⚠ STORE failed due to timeout for file: " + filename);
+            index.removeFileInfo(filename);
+            TCPSender client = pendingClients.remove(filename);
+
+        }
+    }
+
+
+    public CountDownLatch getPendingLatches(String filename) {
+        return pendingLatches.get(filename);
+
+    }
+
 
 }
