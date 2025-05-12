@@ -9,6 +9,7 @@ public class Dstore {
     private final TCPSender   controllerSender;
     private final DstoreHandlerFactory handlerFactory;
     private final int port;
+    private final int timeout;
 
     public Dstore(int port, int controllerPort, int timeout, String fileFolder)
             throws IOException {
@@ -18,11 +19,12 @@ public class Dstore {
         this.controllerSender = new TCPSender("localhost", controllerPort);
 
         // 2) Build the handler factory
-        this.handlerFactory = new DstoreHandlerFactory(fileFolder, controllerSender);
+        this.handlerFactory = new DstoreHandlerFactory(fileFolder, controllerSender, timeout);
 
         // 3) Listen for incoming connections on Dstore port
         this.receiver = new TCPReceiver(port, this::dispatch);
         receiver.attach(controllerSender.getSocket());
+        this.timeout = timeout;
 
         System.out.printf("DStore[%d] → Controller:%d, folder=%s%n",
                 port, controllerPort, fileFolder);

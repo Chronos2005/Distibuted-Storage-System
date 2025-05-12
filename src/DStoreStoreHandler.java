@@ -7,10 +7,12 @@ import java.net.Socket;
 public class DStoreStoreHandler implements CommandHandler {
     private final String fileFolder;
     private final TCPSender controllerSender;
+    private final int timeout;
 
-    public DStoreStoreHandler(String fileFolder, TCPSender controllerSender) {
+    public DStoreStoreHandler(String fileFolder, TCPSender controllerSender , int timeout) {
         this.fileFolder        = fileFolder;
         this.controllerSender  = controllerSender;
+        this.timeout         = timeout;
     }
 
     @Override
@@ -20,6 +22,7 @@ public class DStoreStoreHandler implements CommandHandler {
       String[] args = parts[1].split(" ");
       String filename = args[0];
       int filesize = Integer.parseInt(args[1]);
+      clientSocket.setSoTimeout(timeout);
 
       // 1) ACK to client
       new TCPSender(clientSocket).sendOneWay(Protocol.ACK_TOKEN);

@@ -6,9 +6,9 @@ public class DstoreHandlerFactory {
 
 
 
-    public DstoreHandlerFactory(String fileFolder, TCPSender controllerSender ) {
-        handlers.put(Protocol.STORE_TOKEN,      new DStoreStoreHandler(fileFolder, controllerSender));
-        handlers.put(Protocol.LOAD_DATA_TOKEN,  new DStoreLoadDataHandler(fileFolder));
+    public DstoreHandlerFactory(String fileFolder, TCPSender controllerSender , int timeout ) {
+        handlers.put(Protocol.STORE_TOKEN,      new DStoreStoreHandler(fileFolder, controllerSender, timeout ));
+        handlers.put(Protocol.LOAD_DATA_TOKEN,  new DStoreLoadDataHandler(fileFolder ));
         handlers.put(Protocol.REMOVE_TOKEN,     new DStoreRemoveHandler(fileFolder, controllerSender));
         // If you add rebalance later, wire it here:
         // handlers.put(Protocol.REBALANCE_TOKEN,        new RebalanceHandler(...));
