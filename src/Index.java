@@ -46,7 +46,9 @@ public class Index {
     public Map<Integer,Integer> getFileCountPerDstore() {
         Map<Integer,Integer> counts = new HashMap<>();
         for (FileInfo info : files.values()) {
-            if (info.getFileState() == FileState.STORE_COMPLETE) {
+            // Count both completed and in-progress files
+            if (info.getFileState() == FileState.STORE_COMPLETE ||
+                    info.getFileState() == FileState.STORE_IN_PROGRESS) {
                 for (int port : info.getdStorePorts()) {
                     counts.merge(port, 1, Integer::sum);
                 }
@@ -59,7 +61,7 @@ public class Index {
         return files.keySet();
     }
 
-    // In Index.java
+
     public void removeFileInfo(String filename) {
         files.remove(filename);
     }

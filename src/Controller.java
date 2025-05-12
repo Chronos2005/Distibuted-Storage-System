@@ -6,6 +6,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Controller {
     private final int                 replicationFactor;
@@ -18,7 +19,7 @@ public class Controller {
     private final Map<String,TCPSender>    pendingRemoveClients = new ConcurrentHashMap<>();
     private final Map<String,Integer>      pendingRemoveAcks    = new ConcurrentHashMap<>();
     private final Map<String, CountDownLatch>    pendingLatches = new ConcurrentHashMap<>();
-
+    private final AtomicInteger rrCounter = new AtomicInteger();
 
     private final ControllerHandlerFactory factory;
     private final int timeout;
@@ -75,13 +76,16 @@ public class Controller {
         socketToDstorePort.put(s, port);
     }
 
-    public ArrayList<Integer> selectLeastLoadedDstores() {
+    public synchronized ArrayList<Integer> selectLeastLoadedDstores() {
         var counts = index.getFileCountPerDstore();
-        var ports = new ArrayList<>(dstorePortstoSenders.keySet());
-        ports.sort(Comparator.comparingInt(p -> counts.getOrDefault(p, 0)));
-        if (ports.size() < replicationFactor) {
+        var ports  = new ArrayList<>(dstorePortstoSenders.keySet());
+        // 1st key = current load, 2nd key = rotated index → fair tie-break
+        int base = rrCounter.getAndIncrement();
+        ports.sort(Comparator
+                .comparingInt((Integer p) -> counts.getOrDefault(p, 0))
+                .thenComparingInt(p -> (p + base) % ports.size()));
+        if (ports.size() < replicationFactor)
             throw new IllegalStateException("Not enough Dstores");
-        }
         return new ArrayList<>(ports.subList(0, replicationFactor));
     }
 

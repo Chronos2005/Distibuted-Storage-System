@@ -40,24 +40,21 @@ public class StoreHandler implements CommandHandler {
       return;
     }
 
-    // Atomically check for duplicates and mark file as storing
-    ArrayList<Integer> dstores = ctrl.selectLeastLoadedDstores();
-    synchronized (ctrl.getIndex()) {
-      FileInfo existing = ctrl.getIndex().getFileInfo(filename);
-      if (existing != null) {
-        new TCPSender(clientSocket)
-                .sendOneWay(Protocol.ERROR_FILE_ALREADY_EXISTS_TOKEN);
-        return;
-      }
-      ctrl.getIndex().setFileInfo(
-              filename,
-              new FileInfo(
-                      Index.FileState.STORE_IN_PROGRESS,
-                      fileSize,
-                      new CopyOnWriteArrayList<>(dstores)
-              )
-      );
-    }
+
+    ArrayList<Integer> dstores;
+       synchronized (ctrl) {
+             if (ctrl.getIndex().getFileInfo(filename) != null) {
+                   new TCPSender(clientSocket)
+                                 .sendOneWay(Protocol.ERROR_FILE_ALREADY_EXISTS_TOKEN);
+                    return;
+                }
+              dstores = ctrl.selectLeastLoadedDstores();
+             ctrl.getIndex().setFileInfo(
+                             filename,
+                              new FileInfo(Index.FileState.STORE_IN_PROGRESS,
+                                                  fileSize,
+                                                  new CopyOnWriteArrayList<>(dstores)));
+          }
 
     System.out.println("Selected Dstores for " + filename + ": " + dstores);
 
