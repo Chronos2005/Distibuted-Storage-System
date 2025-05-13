@@ -3,13 +3,14 @@
 import java.io.IOException;
 import java.net.Socket;
 
-public class Dstore {
+public class Dstore implements DisconnectListener {
 
     private final TCPReceiver receiver;
     private final TCPSender   controllerSender;
     private final DstoreHandlerFactory handlerFactory;
     private final int port;
     private final int timeout;
+    private final int cPort;
 
     public Dstore(int port, int controllerPort, int timeout, String fileFolder)
             throws IOException {
@@ -22,9 +23,10 @@ public class Dstore {
         this.handlerFactory = new DstoreHandlerFactory(fileFolder, controllerSender, timeout);
 
         // 3) Listen for incoming connections on Dstore port
-        this.receiver = new TCPReceiver(port, this::dispatch);
+        this.receiver = new TCPReceiver(port, this::dispatch, this);
         receiver.attach(controllerSender.getSocket());
         this.timeout = timeout;
+        this.cPort = controllerPort;
 
         System.out.printf("DStore[%d] → Controller:%d, folder=%s%n",
                 port, controllerPort, fileFolder);
@@ -63,5 +65,15 @@ public class Dstore {
         String fileFolder = args[3];
 
         new Dstore(port, cport, timeout, fileFolder).start();
+    }
+
+    @Override
+    public void onDisconnect(Socket s) {
+        if (s.getPort()==cPort) {
+            System.err.println("Disconnected from Controller: null");
+
+        }
+
+
     }
 }

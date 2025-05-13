@@ -13,10 +13,12 @@ public class TCPReceiver {
     private final int port;
     private final MessageHandler handler;
     private ServerSocket serverSocket;
+    private DisconnectListener Listener;
 
-    public TCPReceiver(int port, MessageHandler handler) {
+    public TCPReceiver(int port, MessageHandler handler , DisconnectListener listener) {
         this.port = port;
         this.handler = handler;
+        this.Listener = listener;
     }
 
     public void start() throws IOException {
@@ -44,10 +46,12 @@ public class TCPReceiver {
                 System.out.println("Received: " + line);
                 handler.handle(line, socket);
             }
+
         } catch (IOException e) {
             System.err.println("Connection error: " + e.getMessage());
         } finally {
             try {
+                Listener.onDisconnect(socket);
                 socket.close();
             } catch (IOException ignored) {}
         }

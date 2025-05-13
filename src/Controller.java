@@ -8,7 +8,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class Controller {
+public class Controller implements DisconnectListener  {
     private final int                 replicationFactor;
     private final TCPReceiver         receiver;
     private final Index index = new Index();
@@ -30,7 +30,7 @@ public class Controller {
 
     public Controller(int cport, int R, int timeout, int rebalancePeriod) throws IOException {
         this.replicationFactor = R;
-        this.receiver          = new TCPReceiver(cport, this::dispatch);
+        this.receiver          = new TCPReceiver(cport, this::dispatch , this);
         this.factory           = new ControllerHandlerFactory(this);
         this.timeout          = timeout;
     }
@@ -185,6 +185,26 @@ public class Controller {
     public CountDownLatch getPendingLatches(String filename) {
         return pendingLatches.get(filename);
 
+    }
+
+    public void onDisconnect(Socket s) {
+        Integer port = socketToDstorePort.remove(s);
+        if (port == null) return;
+
+        dstorePortstoSenders.remove(port);
+
+        // Purge the port from every FileInfo
+        for (Map.Entry<String,FileInfo> entry : index.getAllEntries()) {
+            FileInfo fi = entry.getValue();
+            fi.removeDstorePort(port);
+
+            // If all replicas are gone the file is effectively lost
+            if (fi.getdStorePorts().isEmpty()) {
+                index.removeFileInfo(entry.getKey());
+            }
+        }
+
+        System.err.println("⚠ D-store " + port + " disconnected – removed");
     }
 
 

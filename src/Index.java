@@ -1,7 +1,9 @@
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 
 public class Index {
@@ -64,6 +66,13 @@ public class Index {
 
     public void removeFileInfo(String filename) {
         files.remove(filename);
+    }
+
+    public Set<Map.Entry<String, FileInfo>> getAllEntries() {
+        // Return a copy of the entry set
+        return new HashSet<>(files.entrySet());
+
+
     }
 
 }

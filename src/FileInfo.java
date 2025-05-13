@@ -32,10 +32,10 @@ public class FileInfo {
         this.fileState = fileState;
     }
 
-    public void removeDstorePorts(int port) {
-        dStorePorts.remove(port);
-
+    public void removeDstorePort(int port) {
+                 dStorePorts.remove(Integer.valueOf(port));
     }
+
 
 
 
