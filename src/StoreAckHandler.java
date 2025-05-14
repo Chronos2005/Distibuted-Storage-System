@@ -19,12 +19,12 @@ public class StoreAckHandler implements CommandHandler {
 
         CountDownLatch latch = ctrl.getPendingLatches(filename);
         if (latch != null) {
-            latch.countDown();  // decrement one replica’s ACK
-            System.out.printf("✔ STORE_ACK %s (remaining=%d)%n",
-                    filename, latch.getCount());
-
-
-
+            latch.countDown();
+            long remaining = latch.getCount();
+            System.out.printf("✔ Store_ACK %s (remaining=%d)%n", filename, remaining);
+            if (remaining == 0) {
+                ctrl.onStoreSuccess(filename);
+            }
         }
     }
 }

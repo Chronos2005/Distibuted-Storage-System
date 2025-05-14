@@ -98,24 +98,16 @@ public class Controller implements DisconnectListener  {
 
 
 
-    public void scheduleStoreTimeout(String filename, TCPSender clientSender) throws InterruptedException {
-       CountDownLatch latch = new CountDownLatch(replicationFactor);
-
+    public void scheduleStoreTimeout(String filename, TCPSender clientSender) {
+        CountDownLatch latch = new CountDownLatch(replicationFactor);
         pendingLatches.put(filename, latch);
         pendingClients.put(filename, clientSender);
+        scheduler.schedule(() -> {
 
-        scheduler.execute(() -> {
-            try {
-                boolean success = latch.await(timeout, TimeUnit.MILLISECONDS);
-                if (success)  onStoreSuccess(filename);
-                else          onStoreTimeout(filename);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+            if (latch.getCount() > 0) {
+                onStoreTimeout(filename);
             }
-        });
-
-
-
+        }, timeout, TimeUnit.MILLISECONDS);
     }
 
 
@@ -185,23 +177,17 @@ public class Controller implements DisconnectListener  {
         System.err.println("⚠ D-store " + port + " disconnected – removed");
     }
 
-    public void scheduleRemoveTimeout(String filename, TCPSender clientSender) throws InterruptedException {
+    public void scheduleRemoveTimeout(String filename, TCPSender clientSender) {
         CountDownLatch latch = new CountDownLatch(replicationFactor);
-
         pendingRemoveLatches.put(filename, latch);
         pendingRemoveClients.put(filename, clientSender);
 
 
-        scheduler.execute(() -> {
-            try {
-                boolean success = latch.await(timeout, TimeUnit.MILLISECONDS);
-                if (success)  onRemoveSuccess(filename);
-                else          onRemoveTimeout(filename);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+        scheduler.schedule(() -> {
+            if (latch.getCount() > 0) {
+                onRemoveTimeout(filename);
             }
-        });
-
+        }, timeout, TimeUnit.MILLISECONDS);
     }
 
     public void onRemoveSuccess(String filename) {

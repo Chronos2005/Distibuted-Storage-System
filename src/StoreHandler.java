@@ -67,10 +67,6 @@ public class StoreHandler implements CommandHandler {
       resp.append(" ").append(p);
     }
     clientSender.sendOneWay(resp.toString());
-      try {
-          ctrl.scheduleStoreTimeout(filename, clientSender);
-      } catch (InterruptedException e) {
-          throw new RuntimeException(e);
-      }
+    ctrl.scheduleStoreTimeout(filename, clientSender);
   }
 }

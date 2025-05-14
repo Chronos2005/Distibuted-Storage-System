@@ -49,11 +49,7 @@ public class RemoveHandler implements CommandHandler {
             }
         }
 
-        try {
-            ctrl.scheduleRemoveTimeout(filename, client);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        ctrl.scheduleRemoveTimeout(filename, client);
     }
 
 }

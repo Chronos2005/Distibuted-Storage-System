@@ -18,12 +18,15 @@ public class RemoveAckHandler implements CommandHandler {
             }
         }
         CountDownLatch latch = ctrl.getPendingRemoveLatches(filename);
-        System.out.println("RemoveAckHandler: " + filename + " latch" + latch);
         if (latch != null) {
-            latch.countDown();  // decrement one replica’s ACK
+            latch.countDown();
+            long remaining = latch.getCount();
             System.out.printf("✔ Remove_ACK %s (remaining=%d)%n",
-                    filename, latch.getCount());
+                    filename, remaining);
 
+            if (remaining == 0) {
+                ctrl.onRemoveSuccess(filename);
+            }
         }
 
 
