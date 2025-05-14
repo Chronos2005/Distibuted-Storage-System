@@ -35,7 +35,7 @@ public class RemoveHandler implements CommandHandler {
 
         // Track pending acks and send REMOVE to dstores
         TCPSender client = new TCPSender(clientSocket);
-        ctrl.trackPendingRemove(filename, client);
+
 
         List<Integer> dsts;
         synchronized (ctrl.getIndex()) {
@@ -47,6 +47,12 @@ public class RemoveHandler implements CommandHandler {
             if (ds != null) {
                 ds.sendOneWay(Protocol.REMOVE_TOKEN + " " + filename);
             }
+        }
+
+        try {
+            ctrl.scheduleRemoveTimeout(filename, client);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
 

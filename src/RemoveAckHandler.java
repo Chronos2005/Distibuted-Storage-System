@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.net.Socket;
+import java.util.concurrent.CountDownLatch;
 
 public class RemoveAckHandler implements CommandHandler {
     private final Controller ctrl;
@@ -15,22 +16,16 @@ public class RemoveAckHandler implements CommandHandler {
             if (info == null || info.getFileState() != Index.FileState.REMOVE_IN_PROGRESS) {
                 return;
             }
+        }
+        CountDownLatch latch = ctrl.getPendingRemoveLatches(filename);
+        System.out.println("RemoveAckHandler: " + filename + " latch" + latch);
+        if (latch != null) {
+            latch.countDown();  // decrement one replica’s ACK
+            System.out.printf("✔ Remove_ACK %s (remaining=%d)%n",
+                    filename, latch.getCount());
 
-            // 2) increment and test the ACK count atomically
-            int count = ctrl.incrementRemoveAck(filename);
-            int needed = info.getdStorePorts().size();
-            if (count < needed) {
-                return;
-            }
-
-            // 3) only when we have enough ACKs do we remove the entry
-            ctrl.getIndex().removeFileInfo(filename);
         }
 
-        // 4) notify client outside the lock
-        TCPSender client = ctrl.completeRemove(filename);
-        if (client != null) {
-            client.sendOneWay(Protocol.REMOVE_COMPLETE_TOKEN);
-        }
+
     }
 }
