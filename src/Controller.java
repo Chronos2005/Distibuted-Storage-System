@@ -32,7 +32,7 @@ public class Controller implements DisconnectListener  {
 
     public Controller(int cport, int R, int timeout, int rebalancePeriod) throws IOException {
         this.replicationFactor = R;
-        this.receiver          = new TCPReceiver(cport, this::dispatch , this);
+        this.receiver          = new TCPReceiver(cport, this::dispatch , this,0);
         this.factory           = new ControllerHandlerFactory(this);
         this.timeout          = timeout;
     }
@@ -81,7 +81,7 @@ public class Controller implements DisconnectListener  {
     public synchronized ArrayList<Integer> selectLeastLoadedDstores() {
         var counts = index.getFileCountPerDstore();
         var ports  = new ArrayList<>(dstorePortstoSenders.keySet());
-        // 1st key = current load, 2nd key = rotated index → fair tie-break
+
         int base = rrCounter.getAndIncrement();
         ports.sort(Comparator
                 .comparingInt((Integer p) -> counts.getOrDefault(p, 0))
@@ -98,16 +98,22 @@ public class Controller implements DisconnectListener  {
 
 
 
-    public void scheduleStoreTimeout(String filename, TCPSender clientSender) {
-        CountDownLatch latch = new CountDownLatch(replicationFactor);
-        pendingLatches.put(filename, latch);
-        pendingClients.put(filename, clientSender);
+    public void scheduleStoreTimeout(String filename) {
+        CountDownLatch latch = pendingLatches.get(filename);
         scheduler.schedule(() -> {
-
-            if (latch.getCount() > 0) {
-                onStoreTimeout(filename);
+            if (latch != null && latch.getCount() > 0) {
+                onStoreTimeout(filename);       // spec: send ERROR_TIMEOUT
             }
         }, timeout, TimeUnit.MILLISECONDS);
+    }
+
+    public CountDownLatch initStoreTracking(String filename,
+                                            int expectedAcks,
+                                            TCPSender client) {
+        CountDownLatch latch = new CountDownLatch(expectedAcks);
+        pendingLatches.put(filename, latch);
+        pendingClients.put(filename, client);
+        return latch;
     }
 
 
@@ -177,17 +183,13 @@ public class Controller implements DisconnectListener  {
         System.err.println("⚠ D-store " + port + " disconnected – removed");
     }
 
-    public void scheduleRemoveTimeout(String filename, TCPSender clientSender) {
-        CountDownLatch latch = new CountDownLatch(replicationFactor);
-        pendingRemoveLatches.put(filename, latch);
-        pendingRemoveClients.put(filename, clientSender);
-
-
-        scheduler.schedule(() -> {
-            if (latch.getCount() > 0) {
-                onRemoveTimeout(filename);
-            }
-        }, timeout, TimeUnit.MILLISECONDS);
+    public void scheduleRemoveTimeout(String filename) {
+                CountDownLatch latch = pendingRemoveLatches.get(filename);
+                scheduler.schedule(() -> {
+                       if (latch != null && latch.getCount() > 0) {
+                                onRemoveTimeout(filename);    // spec: leave entry as-is
+                            }
+                    }, timeout, TimeUnit.MILLISECONDS);
     }
 
     public void onRemoveSuccess(String filename) {
@@ -213,6 +215,17 @@ public class Controller implements DisconnectListener  {
 
         }
     }
+
+    public CountDownLatch initRemoveTracking(String filename,
+                                             int expectedAcks,
+                                             TCPSender client) {
+               CountDownLatch latch = new CountDownLatch(expectedAcks);
+                pendingRemoveLatches.put(filename, latch);
+                pendingRemoveClients.put(filename, client);
+                return latch;
+    }
+
+
 
 
 }

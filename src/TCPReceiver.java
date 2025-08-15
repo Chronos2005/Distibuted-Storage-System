@@ -14,11 +14,13 @@ public class TCPReceiver {
     private final MessageHandler handler;
     private ServerSocket serverSocket;
     private DisconnectListener Listener;
+    private int timeout;
 
-    public TCPReceiver(int port, MessageHandler handler , DisconnectListener listener) {
+    public TCPReceiver(int port, MessageHandler handler , DisconnectListener listener,int timeout) {
         this.port = port;
         this.handler = handler;
         this.Listener = listener;
+        this.timeout = timeout;
     }
 
     public void start() throws IOException {
@@ -29,6 +31,7 @@ public class TCPReceiver {
             while (true) {
                 try {
                     Socket client = serverSocket.accept();
+                    client.setSoTimeout(timeout);
                     new Thread(() -> handleClient(client)).start();
                 } catch (IOException e) {
                     System.err.println("Error accepting connection: " + e.getMessage());

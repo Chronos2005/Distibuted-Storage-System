@@ -47,7 +47,7 @@ echo "📝 Preparing test file..."
 
 # Run ClientMain tests, logging output
 echo "🧪 Running client tests..."
-java -cp client/client.jar:bin ClientMain $C_PORT 1000 "concurrentlistduringremove"  \
+java -cp client/client.jar:bin ClientMain $C_PORT 1000  "concurrentremoveduringremove" \
     > logs/client.log 2>&1
 
 # Kill all background processes

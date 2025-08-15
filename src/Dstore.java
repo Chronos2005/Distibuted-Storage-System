@@ -23,7 +23,7 @@ public class Dstore implements DisconnectListener {
         this.handlerFactory = new DstoreHandlerFactory(fileFolder, controllerSender, timeout);
 
         // 3) Listen for incoming connections on Dstore port
-        this.receiver = new TCPReceiver(port, this::dispatch, this);
+        this.receiver = new TCPReceiver(port, this::dispatch, this,timeout);
         receiver.attach(controllerSender.getSocket());
         this.timeout = timeout;
         this.cPort = controllerPort;

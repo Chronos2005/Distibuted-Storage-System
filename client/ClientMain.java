@@ -16,7 +16,7 @@ public class ClientMain {
 			System.err.println("Usage: java ClientMain <cport> <timeout> <operation> [count]");
 			System.err.println("  operation: store | list | load | remove | reload | " +
 					"concurrentStore | concurrentLoadDuringStore | concurrentRemoveDuringStore | concurrentListDuringStore | " +
-					"concurrentStoreDuringRemove | concurrentLoadDuringRemove | concurrentRemoveDuringRemove | concurrentListDuringRemove");
+					"concurrentStoreDuringRemove | concurrentLoadDuringRemove | concurrentRemoveDuringRemove | concurrentListDuringRemove | massConcurrent");
 			System.err.println("  count: number of operations to perform (optional, default=1)");
 			return;
 		}
@@ -28,47 +28,27 @@ public class ClientMain {
 
 		try {
 			switch (op) {
-				case "store":
-				case "list":
-				case "load":
-				case "remove":
-				case "reload": {
+				case "store": case "list": case "load": case "remove": case "reload": {
 					Client client = new Client(cport, timeout, Logger.LoggingType.ON_FILE_AND_TERMINAL);
 					client.connect();
 					runSimpleOp(client, op, count);
 					client.disconnect();
 					break;
 				}
-				case "concurrentstore":
-					testConcurrentStore(cport, timeout);
-					break;
-				case "concurrentloadduringstore":
-					testConcurrentLoadDuringStore(cport, timeout);
-					break;
-				case "concurrentremoveduringstore":
-					testConcurrentRemoveDuringStore(cport, timeout);
-					break;
-				case "concurrentlistduringstore":
-					testConcurrentListDuringStore(cport, timeout);
-					break;
-				case "concurrentstoreduringremove":
-					testConcurrentStoreDuringRemove(cport, timeout);
-					break;
-				case "concurrentloadduringremove":
-					testConcurrentLoadDuringRemove(cport, timeout);
-					break;
-				case "concurrentremoveduringremove":
-					testConcurrentRemoveDuringRemove(cport, timeout);
-					break;
-				case "concurrentlistduringremove":
-					testConcurrentListDuringRemove(cport, timeout);
-					break;
+				case "concurrentstore":                testConcurrentStore(cport, timeout); break;
+				case "concurrentloadduringstore":    testConcurrentLoadDuringStore(cport, timeout); break;
+				case "concurrentremoveduringstore":  testConcurrentRemoveDuringStore(cport, timeout); break;
+				case "concurrentlistduringstore":    testConcurrentListDuringStore(cport, timeout); break;
+				case "concurrentstoreduringremove":  testConcurrentStoreDuringRemove(cport, timeout); break;
+				case "concurrentloadduringremove":   testConcurrentLoadDuringRemove(cport, timeout); break;
+				case "concurrentremoveduringremove": testConcurrentRemoveDuringRemove(cport, timeout); break;
+				case "concurrentlistduringremove":   testConcurrentListDuringRemove(cport, timeout); break;
+				case "massconcurrent":               testMassConcurrency(cport, timeout); break;
 				default:
 					System.err.println("Unknown operation: " + op);
 			}
 		} catch (IOException e) {
-			System.err.println("I/O error: " + e.getMessage());
-			e.printStackTrace();
+			System.err.println("I/O error: " + e.getMessage()); e.printStackTrace();
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 		}
@@ -86,13 +66,9 @@ public class ClientMain {
 	}
 
 	private static void testStore(Client client, int count) throws IOException {
-		File dir = new File("to_store");
-		if (!dir.exists()) dir.mkdirs();
+		File dir = new File("to_store"); if (!dir.exists()) dir.mkdirs();
 		File[] files = dir.listFiles();
-		if (files == null || files.length == 0) {
-			createTestFiles(dir, 3);
-			files = dir.listFiles();
-		}
+		if (files == null || files.length == 0) { createTestFiles(dir, 3); files = dir.listFiles(); }
 		System.out.println("==== Performing " + count + " store operations ====");
 		int success = 0;
 		for (int i = 0; i < count; i++) {
@@ -121,8 +97,7 @@ public class ClientMain {
 
 	private static void testLoad(Client client, int count)
 			throws IOException, NotEnoughDstoresException, FileDoesNotExistException {
-		File dl = new File("downloads");
-		dl.mkdirs();
+		File dl = new File("downloads"); dl.mkdirs();
 		String[] files = client.list();
 		if (files.length == 0) { System.err.println("No files to load"); return; }
 		int success = 0;
@@ -137,6 +112,7 @@ public class ClientMain {
 
 	private static void testRemove(Client client)
 			throws IOException, NotEnoughDstoresException {
+		preStore(12345, 3000, "removeTest.txt", 1024);
 		String target = "removeTest.txt";
 		client.remove(target);
 		System.out.println("Remove issued for " + target);
@@ -144,8 +120,7 @@ public class ClientMain {
 
 	private static void reloadTest(Client client) throws IOException {
 		File dir = new File("to_store"); if (!dir.exists()) dir.mkdirs();
-		File f = new File(dir, "reloadTest.txt");
-		if (!f.exists()) f.createNewFile();
+		File f = new File(dir, "reloadTest.txt"); if (!f.exists()) f.createNewFile();
 		client.store(f.getName(), Files.readAllBytes(f.toPath()));
 		client.wrongLoad(f.getName(), 5);
 	}
@@ -173,25 +148,24 @@ public class ClientMain {
 	private static void testConcurrentLoadDuringStore(int cport, int timeout)
 			throws IOException, InterruptedException, NotEnoughDstoresException {
 		System.out.println("Concurrent LOAD vs STORE");
-
 		runConcurrent(cport, timeout,
 				c -> c.store("x.dat", new byte[2048]),
-				c -> c.load( "x.dat", new File("downloads")));
+				c -> c.load("x.dat", new File("downloads")));
 	}
 
 	private static void testConcurrentRemoveDuringStore(int cport, int timeout)
 			throws IOException, InterruptedException, NotEnoughDstoresException {
 		System.out.println("Concurrent REMOVE vs STORE");
 		runConcurrent(cport, timeout,
-				c -> c.store(  "y.dat", new byte[2048]),
-				c -> c.remove( "y.dat"));
+				c -> c.store("y.dat", new byte[2048]),
+				c -> c.remove("y.dat"));
 	}
 
 	private static void testConcurrentListDuringStore(int cport, int timeout)
 			throws IOException, InterruptedException, NotEnoughDstoresException {
 		System.out.println("Concurrent LIST vs STORE");
 		runConcurrent(cport, timeout,
-				c -> c.store( "z.dat", new byte[2048]),
+				c -> c.store("z.dat", new byte[2048]),
 				c -> System.out.println("List: "+Arrays.toString(c.list())));
 	}
 
@@ -210,8 +184,10 @@ public class ClientMain {
 		preStore(cport, timeout, "b.dat", 1024);
 		runConcurrent(cport, timeout,
 				c -> c.remove("b.dat"),
-				c -> c.load( "b.dat", new File("downloads")));
+				c -> c.load("b.dat", new File("downloads")));
 	}
+
+
 
 	private static void testConcurrentRemoveDuringRemove(int cport, int timeout)
 			throws IOException, InterruptedException, NotEnoughDstoresException {
@@ -231,12 +207,42 @@ public class ClientMain {
 				c -> System.out.println("List: "+Arrays.toString(c.list())));
 	}
 
+	/**
+	 * New stress test: spawn 10 clients performing store, load, and remove concurrently.
+	 */
+	private static void testMassConcurrency(int cport, int timeout)
+			throws InterruptedException {
+		System.out.println("=== Mass concurrency stress test with 10 clients ===");
+		ExecutorService exec = Executors.newFixedThreadPool(10);
+		CountDownLatch start = new CountDownLatch(1);
+		for (int i = 0; i < 10; i++) {
+			final int id = i;
+			exec.execute(() -> {
+				try {
+					Client c = new Client(cport, timeout, Logger.LoggingType.ON_FILE_AND_TERMINAL);
+					c.connect();
+					start.await();
+					String fname = "stress_" + id + ".dat";
+					// store
+					c.store(fname, new byte[128]);
+					// load
+					c.load(fname, new File("downloads"));
+					// remove
+					c.remove(fname);
+					c.disconnect();
+				} catch (Exception e) {
+					System.err.println("Stress client " + id + " error: " + e.getMessage());
+				}
+			});
+		}
+		start.countDown();
+		exec.shutdown();
+	}
+
 	private static void preStore(int cport, int timeout, String name, int size)
 			throws IOException, NotEnoughDstoresException {
 		Client c = new Client(cport, timeout, Logger.LoggingType.ON_FILE_AND_TERMINAL);
-		c.connect();
-		c.store(name, new byte[size]);
-		c.disconnect();
+		c.connect(); c.store(name, new byte[size]); c.disconnect();
 	}
 
 	@FunctionalInterface
@@ -247,17 +253,16 @@ public class ClientMain {
 		ExecutorService exec = Executors.newFixedThreadPool(2);
 		CountDownLatch start = new CountDownLatch(1);
 		exec.execute(() -> {
-			try {
-				Client c = new Client(cport, timeout, Logger.LoggingType.ON_FILE_AND_TERMINAL);
+			try { Client c = new Client(cport, timeout, Logger.LoggingType.ON_FILE_AND_TERMINAL);
 				c.connect(); start.await(); op1.apply(c); c.disconnect();
 			} catch (Exception e) { System.err.println(e.getMessage()); }
 		});
 		exec.execute(() -> {
-			try {
-				Client c = new Client(cport, timeout, Logger.LoggingType.ON_FILE_AND_TERMINAL);
+			try { Client c = new Client(cport, timeout, Logger.LoggingType.ON_FILE_AND_TERMINAL);
 				c.connect(); start.await(); op2.apply(c); c.disconnect();
 			} catch (Exception e) { System.err.println(e.getMessage()); }
 		});
-		start.countDown(); exec.shutdown();
+		start.countDown();
+		exec.shutdown();
 	}
 }

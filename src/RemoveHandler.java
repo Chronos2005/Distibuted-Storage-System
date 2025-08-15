@@ -41,6 +41,8 @@ public class RemoveHandler implements CommandHandler {
         synchronized (ctrl.getIndex()) {
             dsts = List.copyOf(ctrl.getIndex().getFileInfo(filename).getdStorePorts());
         }
+        ctrl.initRemoveTracking(filename, dsts.size(), client);
+
         System.out.println("Removing from: " + dsts);
         for (int p : dsts) {
             TCPSender ds = ctrl.getDstorePortstoSenders().get(p);
@@ -49,7 +51,7 @@ public class RemoveHandler implements CommandHandler {
             }
         }
 
-        ctrl.scheduleRemoveTimeout(filename, client);
+        ctrl.scheduleRemoveTimeout(filename);
     }
 
 }

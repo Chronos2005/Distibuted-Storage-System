@@ -9,6 +9,7 @@ public class StoreHandler implements CommandHandler {
 
   public StoreHandler(Controller ctrl) {
     this.ctrl = ctrl;
+
   }
 
   @Override
@@ -61,12 +62,12 @@ public class StoreHandler implements CommandHandler {
     // Track the pending client and send STORE_TO response
     TCPSender clientSender = new TCPSender(clientSocket);
 
-
+    ctrl.initStoreTracking(filename, dstores.size(), clientSender);
     StringBuilder resp = new StringBuilder(Protocol.STORE_TO_TOKEN);
     for (int p : dstores) {
       resp.append(" ").append(p);
     }
     clientSender.sendOneWay(resp.toString());
-    ctrl.scheduleStoreTimeout(filename, clientSender);
+    ctrl.scheduleStoreTimeout(filename);
   }
 }
